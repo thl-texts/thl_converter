@@ -19,8 +19,6 @@ global_list_level = 0
 prevHeading = 0
 noteNumber = 0
 
-#numba = 0
-
 ########## FUNCTIONS ##########
 
 def doMetadata(metaTable):
@@ -98,39 +96,48 @@ def doHeaders(par, lastElement, root):
 	#print styName
 
 	#front
-	#if ("Heading1_Front" in styName) or (("Heading 1" in styName) and ("Front" in par.text)) or ("Heading 0 Front" in styName):
 	if "Heading 0 Front" == styName:
 		lastElement = root.find('text')
+		#while global_header_level > 0:
+	 	#	lastElement = lastElement.getparent()
+	 	#	lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
+	 	#	global_header_level -= 1
+		global_header_level = 0
 		front = etree.SubElement(lastElement, "front")
 		front.set("id", "a")
 		head = etree.SubElement(front, "head")				
 		head.text = par.text
 		frontOpen = True
-		global_header_level = 0
 		return front
 	#body
-	#elif ("Heading1_Body" in styName) or (("Heading 1" in styName) and ("Body" in par.text)) or ("Heading 0 Body" in styName):
 	elif "Heading 0 Body" == styName:
 		lastElement = root.find('text')
+		# while global_header_level > 0:
+		#  		lastElement = lastElement.getparent()
+		#  		lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
+		#  		global_header_level -= 1
+		global_header_level = 0
 		body = etree.SubElement(lastElement,"body")
 		body.set("id", "b")
 		head = etree.SubElement(body, "head")
 		head.text = par.text
 		frontOpen = False
 		bodyOpen = True
-		global_header_level = 0
 		return body
 	#back sections
-	#elif ("Heading1_Back" in styName) or (("Heading 1" in styName) and ("Back" in par.text)) or ("Heading 0 Back" in styName):
 	elif "Heading 0 Back" == styName:
 		lastElement = root.find('text')
+		# while global_header_level > 0:
+	  	#	lastElement = lastElement.getparent()
+	  	#	lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
+	  	#	global_header_level -= 1
+		global_header_level = 0
 		back = etree.SubElement(lastElement, "back")
 		back.set("id", "c")
 		head = etree.SubElement(back, "head")
 		head.text = par.text
 		bodyOpen = False
 		backOpen = True
-		global_header_level = 0
 		return back
 	
 	#do divs within the body
@@ -147,7 +154,7 @@ def doHeaders(par, lastElement, root):
 		headingNum = styName.split(" ")[1]
 		
 		if headingNum.isdigit():
-			headingNum = int(headingNum) - 1			#take out minus 1 if we decide on Heading 0 -> Heading 1 -> Heading 2 -> etc. (right now this assumes Heading 0 -> Heading 2 -> Heading 3 -> etc.)
+			headingNum = int(headingNum)
 			
 			if headingNum-1 > global_header_level:
 				print "\t Warning (IMPROPER HEADER NESTING): Jumped from Heading " + str(global_header_level) + " to Heading " + str(headingNum)
@@ -157,35 +164,74 @@ def doHeaders(par, lastElement, root):
 			if headingNum > global_header_level:
 				while headingNum != global_header_level:
 					global_header_level += 1
+
+					curID = par.text.split()
+					if (len(curID)==2):
+						curID = curID[0]
+					elif (len(curID)==1):
+						curID = "no id"
+					else:
+						curID = "no id"
+
+					lastElement = etree.SubElement(lastElement,"div")
+					lastElement.set("n",str(global_header_level))
+					lastElement.set("id", curID)
+
+					head = etree.SubElement(lastElement,"head")
+					head.text = par.text
+
+				return lastElement
+
 			# pop out a level or remain on same level
 			else:
-				while headingNum != global_header_level:		# <-- check if this needs minus 1?
-					global_header_level -= 1
+				
+				#pop out as many levels as necessry
+				while headingNum != global_header_level:
 					lastElement = lastElement.getparent()
-				lastElement = lastElement.getparent()
-			
-			curID = par.text.split()
-			if (len(curID)==2):
-				curID = curID[0]
-			elif (len(curID)==1):
-				curID = "no id"
-			else:
-				curID = "no id"
+					lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
+					global_header_level -= 1
 
-			
-			if useDiv1:
-				div = etree.SubElement(lastElement,"div"+str(global_header_level))
-				div.set("id", curID)
-			else:
-				div = etree.SubElement(lastElement,"div")
-				div.set("n",str(global_header_level))
-				div.set("id", curID)
-				#end of level comment
+				#create new div on current level
+				lastElement = lastElement.getparent()
 				lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
+				curID = par.text.split()
+				if (len(curID)==2):
+					curID = curID[0]
+				elif (len(curID)==1):
+					curID = "no id"
+				else:
+					curID = "no id"
+
+				lastElement = etree.SubElement(lastElement,"div")
+				lastElement.set("n",str(global_header_level))
+				lastElement.set("id", curID)
+
+				head = etree.SubElement(lastElement,"head")
+				head.text = par.text
+				return lastElement
+		
+			# curID = par.text.split()
+			# if (len(curID)==2):
+			# 	curID = curID[0]
+			# elif (len(curID)==1):
+			# 	curID = "no id"
+			# else:
+			# 	curID = "no id"
+			
+			# if useDiv1:
+			# 	div = etree.SubElement(lastElement,"div"+str(global_header_level))
+			# 	div.set("id", curID)
+			# else:
+			# 	div = etree.SubElement(lastElement,"div")
+			# 	div.set("n",str(global_header_level))
+			# 	div.set("id", curID)
+			# 	#end of level comment
+			# 	lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 	
-			head = etree.SubElement(div,"head")
-			head.text = par.text
-			return div
+			# head = etree.SubElement(div,"head")
+			# head.text = par.text
+			# return div
+
 		else:
 			print "\t Warning: Heading number of heading (" + styName + ") is NaN"
 
@@ -222,7 +268,7 @@ def closeStyle(styName, lastElement):
 	#if styName == "Paragraph":
 	#	return lastElement
 
-	if lgOpen and "Verse 2" not in styName:
+	if lgOpen and ("Verse 2" or "Nested 2") not in styName:
 		lgOpen = False
 		#citOpen = False
 		#speechOpen = False
@@ -232,7 +278,7 @@ def closeStyle(styName, lastElement):
 		flag = True
 		while global_list_level > 1:
 			global_list_level -= 1
-			lastElement = lastElement.getparent()
+			lastElement = lastElement.getparent().getparent()
 		global_list_level = 0
 		#this is for Citation List Bullet/Number (must pop out twice b/c of <quote> & <list>)
 		#check if this breaks or works for cituations where there is a citation paragraph/verse in a regular list
@@ -256,7 +302,7 @@ def doParaStyles(par, prevSty, lastElement):
 
 	styName = par.style.name
 
-	print styName
+	#print styName
 
 	lastElement = closeStyle(styName, lastElement)
 
@@ -366,14 +412,15 @@ def doParaStyles(par, prevSty, lastElement):
 		# push new nested list level (or first level)
 		if cur_list_level > global_list_level:
 			while cur_list_level != global_list_level:
+				if cur_list_level > 1:
+					lastElement = etree.SubElement(lastElement,"item")
 				global_list_level += 1
 				lastElement = doNewList(styName, lastElement, cur_list_level)
 		# pop out a level or remain on same level
 		else:
 			while cur_list_level != global_list_level:
 				global_list_level -= 1
-				lastElement = lastElement.getparent()
-			lastElement = lastElement.getparent()
+				lastElement = lastElement.getparent().getparent()
 		item = etree.SubElement(lastElement, "item")
 		iterateRange(par, item)
 		return lastElement
@@ -473,7 +520,6 @@ def doParaStyles(par, prevSty, lastElement):
 		return lastElement
 
 def iterateRange(par, lastElement):
-	#global numba
 
 	#styName is the current paragraph style
 	styName = par.style.name
@@ -527,8 +573,83 @@ def iterateRange(par, lastElement):
 			prevCharStyle = charStyle
 
 		else:
+
+			# Page Number,digital
+			if "Page Number" == charStyle:
+				elem = etree.SubElement(lastElement,"milestone")
+				elem.set("unit","page")
+				temp = run.text
+				if run.text[0]=="[":
+					temp = temp[1:]
+				if run.text[-1]=="]":
+					temp = temp[:-1]
+				elem.set("n",temp)
+				elem.set("rend","digital")
+
+			# Line Number,digital
+			elif "Line Number" == charStyle:
+				elem = etree.SubElement(lastElement,"milestone")
+				elem.set("unit","line")
+				temp = run.text
+				if run.text[0]=="[":
+					temp = temp[1:]
+				if run.text[-1]=="]":
+					temp = temp[:-1]
+				elem.set("n",temp)
+				elem.set("rend","digital")
+
+			# Page Number Number Print Edition,pnp"
+			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
+				if charStyle == prevCharStyle:
+					currentN = elem.get("n")
+					temp = run.text
+					if run.text[0]=="[":
+						temp = temp[1:]
+					if run.text[-1]=="]":
+						temp = temp[:-1]
+					currentN += temp
+					elem.set("n", currentN)
+				else:
+					elem = etree.SubElement(lastElement,"milestone")
+					elem.set("unit","page")
+					temp = run.text
+					if run.text[0]=="[":
+						temp = temp[1:]
+					if run.text[-1]=="]":
+						temp = temp[:-1]
+
+					elem.set("n", temp)
+
+			# Line Number Print,lnp
+			elif "Line Number Print" in charStyle or "TibLineNumber"==charStyle:
+				if charStyle == prevCharStyle:
+					currentN = elem.get("n")
+					temp = run.text
+					if run.text[0]=="[":
+						temp = temp[1:]
+					if run.text[-1]=="]":
+						temp = temp[:-1]
+					currentN += temp
+					elem.set("n", currentN)
+
+				else:
+					elem = etree.SubElement(lastElement,"milestone")
+					elem.set("unit","line")
+					temp = run.text
+					if run.text[0]=="[":
+						temp = temp[1:]
+					if run.text[-1]=="]":
+						temp = temp[:-1]
+					elem.set("n",temp)
+
+				
+			elif charStyle == "Illegible":
+				elem = etree.SubElement(lastElement,"gap")
+				elem.set("n",run.text.split("[")[1].split("]")[0])
+				elem.set("reason","illegible")
+
 			# continue with same character style within same XML tag
-			if charStyle == prevCharStyle:
+			elif charStyle == prevCharStyle:
 				try:
 					try:
 						elem.text += run.text
@@ -539,38 +660,8 @@ def iterateRange(par, lastElement):
 						lastElement.text += run.text
 					except TypeError:
 						lastElement.text = run.text
-			
 
-			# Page Number,digital
-			elif "Page Number" == charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","page")
-				elem.set("n",run.text)
-				elem.set("rend","digital")
-
-			# Line Number,digital
-			elif "Line Number" == charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","line")
-				elem.set("n",run.text)
-				elem.set("rend","digital")
-
-			# Page Number Number Print Edition,pnp"
-			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","page")
-				#print run.text
-				#numba += 1
-				#if(numba==2):
-				#	sys.exit()
-				elem.set("n", run.text)
-
-			# Line Number Print,lnp
-			elif "Line Number Print" in charStyle or "TibLineNumber"==charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","line")
-				elem.set("n",run.text)
-
+			# new character style or no character style 
 			else:
 				elem = getElement(charStyle, lastElement)
 				if elem == "none type":
@@ -619,30 +710,62 @@ def iterateNote(run, lastElement, styName):
 					elem.text = char
 			
 			# Page Number,digital
-			elif "Page Number" == charStyle:
+			if "Page Number" == charStyle:
 				elem = etree.SubElement(lastElement,"milestone")
 				elem.set("unit","page")
-				elem.set("n",run.text)
+				temp = char
+				if char[0]=="[":
+					temp = temp[1:]
+				if char[-1]=="]":
+					temp = temp[:-1]
+				elem.set("n",temp)
 				elem.set("rend","digital")
 
 			# Line Number,digital
 			elif "Line Number" == charStyle:
 				elem = etree.SubElement(lastElement,"milestone")
 				elem.set("unit","line")
-				elem.set("n",run.text)
+				temp = char
+				if char[0]=="[":
+					temp = temp[1:]
+				if char[-1]=="]":
+					temp = temp[:-1]
+				elem.set("n",temp)
 				elem.set("rend","digital")
 
 			# Page Number Number Print Edition,pnp"
 			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","page")
-				elem.set("n", run.text)
+				if charStyle == prevCharStyle:
+					currentN = elem.get("n")
+					temp = char
+					if char[0]=="[":
+						temp = temp[1:]
+					if char[-1]=="]":
+						temp = temp[:-1]
+					currentN += temp
+					elem.set("n", currentN)
+				else:
+					elem = etree.SubElement(lastElement,"milestone")
+					elem.set("unit","page")
+					temp = char
+					if char[0]=="[":
+						temp = temp[1:]
+					if char[-1]=="]":
+						temp = temp[:-1]
+
+					elem.set("n", temp)
 
 			# Line Number Print,lnp
 			elif "Line Number Print" in charStyle or "TibLineNumber"==charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","line")
-				elem.set("n",run.text)
+				if charStyle == prevCharStyle:
+					currentN = elem.get("n")
+					temp = char
+					if char[0]=="[":
+						temp = temp[1:]
+					if char[-1]=="]":
+						temp = temp[:-1]
+					currentN += temp
+					elem.set("n", currentN)
 
 
 			# set new character style
@@ -851,11 +974,6 @@ def getElement(chStyle, lastElement):
 	elif chStyle == "Annotations":
 	 	elem = etree.SubElement(lastElement,"note")
 	  	elem.set("n","annotation")
-
-	elif chStyle == "Illegible":
-		elem = etree.SubElement(lastElement,"gap")
-		#elem.set("n",cur_page_line)
-		elem.set("reason","illegible")
 
 	elif chStyle == "Root Text":
 	 	elem = etree.SubElement(lastElement,"seg")
