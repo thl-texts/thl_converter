@@ -8,7 +8,7 @@ from datetime import date
 import sys, os
 
 ########## GLOBAL VARIABLES ##########
-tableOpen = citOpen = listOpen = lgOpen = speechOpen = False
+tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
 bodyOpen = backOpen = frontOpen = False
 useDiv1 = True
 global_header_level = 0
@@ -261,18 +261,10 @@ def doNewList(styName, lastElement, cur_list_level):
 	return lst
 
 def closeStyle(styName, lastElement):
-	global citOpen, listOpen, lgOpen, speechOpen, global_list_level
+	global listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, global_list_level
 
-	flag = False;
+	flag = False
 
-	#if styName == "Paragraph":
-	#	return lastElement
-
-	if lgOpen and ("Verse 2" or "Nested 2") not in styName:
-		lgOpen = False
-		#citOpen = False
-		#speechOpen = False
-		flag = True
 	if listOpen and "List" not in styName:
 		listOpen = False
 		flag = True
@@ -285,20 +277,65 @@ def closeStyle(styName, lastElement):
 		if citOpen and "Citation" not in styName:
 				citOpen = False
 				return lastElement.getparent().getparent()
+		else:
+			lastElement = lastElement.getparent()
+
+
+	# Close Citation / Nested Citation
 	if citOpen and "Citation" not in styName:
 		citOpen = False
-		flag = True
+		if nestedCitOpen and "Nested" not in styName:
+			nestedCitOpen = False
+			if lgOpen:
+				lgOpen = False
+				return lastElement.getparent().getparent().getparent().getparent()
+			else:
+				return lastElement.getparent().getparent()
+		else:
+			if lgOpen:
+				lgOpen = False
+				return lastElement.getparent().getparent()
+			else:
+				return lastElement.getparent()
+	elif nestedCitOpen and "Nested" not in styName:
+		nestedCitOpen = False
+		if lgOpen:
+			return lastElement.getparent().getparent()
+		else:
+			return lastElement.getparent()
+	
+	# Close Speech / Nested Speech
 	if speechOpen and "Speech" not in styName:
 		speechOpen = False
-		flag = True
-
-	if flag:
-		return lastElement.getparent()
+		if nestedSpeechOpen and "Nested" not in styName:
+			nestedSpeechOpen = False
+			if lgOpen:
+				lgOpen = False
+				return lastElement.getparent().getparent().getparent().getparent()
+			else:
+				return lastElement.getparent().getparent()
+		else:
+			if lgOpen:
+				lgOpen = False
+				return lastElement.getparent().getparent()
+			else:
+				return lastElement.getparent()
+	elif nestedSpeechOpen and "Nested" not in styName:
+		nestedSpeechOpen = False
+		if lgOpen:
+			return lastElement.getparent().getparent()
+		else:
+			return lastElement.getparent()
 	
-	return lastElement
+	# Close Verse 1 / Verse 2
+	if lgOpen and not("Verse 2" in styName or "Nested 1" in styName or "Nested 2" in styName or "1 Nested" in styName or "2 Nested" in styName):
+		lgOpen = False
+		return lastElement.getparent()
+	else:
+		return lastElement
 
 def doParaStyles(par, prevSty, lastElement):
-	global citOpen, listOpen, lgOpen, speechOpen, global_list_level 
+	global listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, global_list_level 
 
 	styName = par.style.name
 
@@ -311,19 +348,13 @@ def doParaStyles(par, prevSty, lastElement):
 		iterateRange(par, p)
 		return lastElement
 	
-	## Check if closeStyles() already gets the parent for these "Continued" styles
-	## Also check if this works for doubly (or more) nested features.
-	## For example, if a citation in a paragraph ends with a list within a list and then there is a "Paragraph Citation Continued," wouldn't this make lastElement the first list instead of the paragraph?
+
+	# fix this
 	elif "Paragraph Continued" == styName or "ParagraphContinued" == styName:
-	 	lastElement = lastElement.getparent()
+	 	#lastElement = lastElement.getparent()
 	 	p = etree.SubElement(lastElement, "p")
 	 	iterateRange(par, p)
 	 	return lastElement
-	
-	elif "Bibliography" == styName:
-		bibl = etree.SubElement(lastElement, "bibl")
-		iterateRange(par, bibl) 
-		return lastElement
 
 	# textual citations
 	elif "Citation" in styName:
@@ -364,9 +395,12 @@ def doParaStyles(par, prevSty, lastElement):
 			return lastElement
 
 		elif "Paragraph Citation Nested" == styName:
+			if "Paragraph Citation" not in prevSty and "Citation Prose 2" not in prevSty and "Z-Depracated Paragraph Citation" not in prevSty:
+				print "\t Warning (IMPROPER CITATION NESTING): " + styName + " must be preceded by Paragraph Citation"
+
+			nestedCitOpen = True
 			quote = etree.SubElement(lastElement,"quote")
-			p = etree.SubElement(quote, "p")
-			iterateRange(par, p)
+			iterateRange(par, quote)
 			return quote
 			#check on getting parent for closeStyle on this
 
@@ -383,10 +417,14 @@ def doParaStyles(par, prevSty, lastElement):
 			return lastElement
 
 		elif "Citation Verse Nested 1" == styName or "Verse Citation Nested 1" == styName:
-			lastElement = lastElement.getparent()
-			lg = etree.SubElement(lastElement,"lg")
-			l = etree.SubElement(lg,"l")
-			iterateRange(par,l)
+			if "Citation Verse" not in prevSty and "Verse Citation" not in prevSty:
+				print "\t Warning (IMPROPER CITATION NESTING): " + styName + " must be preceded by a Verse Citation"
+			
+			nestedCitOpen = True
+			l = etree.SubElement(lastElement,"l")
+			lg = etree.SubElement(l,"lg")
+			subL = etree.SubElement(lg,"l")
+			iterateRange(par,subL)
 			lgOpen = True
 			return lg
 
@@ -431,6 +469,7 @@ def doParaStyles(par, prevSty, lastElement):
 		# REMOVE WHEN TEST DOC IS CORRECTED
 		if "Speech Inline" == styName:
 			q = etree.SubElement(lastElement,"q")
+			iterateRange(par, q)
 			return lastElement
 
 		if not speechOpen:
@@ -443,9 +482,12 @@ def doParaStyles(par, prevSty, lastElement):
 			return lastElement
 
 		elif "Speech Prose Nested" == styName or "Speech Paragraph Nested" == styName:
+			if "Speech Prose" not in prevSty and "Speech Paragraph" not in prevSty:
+				print "\t Warning (IMPROPER SPEECH NESTING): " + styName +  "must be preceded by Speech Paragraph"
+
+			nestedSpeechOpen = True
 			q = etree.SubElement(lastElement,"q")
-			p = etree.SubElement(q, "p")
-			iterateRange(par, p)
+			iterateRange(par, q)
 			return q
 			#check on getting parent for closeStyle on this
 
@@ -462,10 +504,14 @@ def doParaStyles(par, prevSty, lastElement):
 			return lastElement
 
 		elif "Speech Verse 1 Nested" == styName: 
-			lastElement = lastElement.getparent()
-			lg = etree.SubElement(lastElement,"lg")
-			l = etree.SubElement(lg,"l")
-			iterateRange(par,l)
+			if "Speech Verse" not in prevSty:
+				print "\t Warning (IMPROPER SPEECH NESTING): " + styName + " must be preceded by a Speech Verse"
+
+			nestedSpeechOpen = True
+			l = etree.SubElement(lastElement,"l")
+			lg = etree.SubElement(l,"lg")
+			subL = etree.SubElement(lg,"l")
+			iterateRange(par,subL)
 			lgOpen = True
 			return lg
 
@@ -497,10 +543,10 @@ def doParaStyles(par, prevSty, lastElement):
 
 	elif "Verse" in styName:
 		if "Verse 1" == styName:
+			lgOpen = True
 			lg = etree.SubElement(lastElement,"lg")
 			l = etree.SubElement(lg,"l")
 			iterateRange(par, l) 
-			lgOpen = True
 			return lg
 
 		elif "Verse 2" == styName:
@@ -767,6 +813,10 @@ def iterateNote(run, lastElement, styName):
 					currentN += temp
 					elem.set("n", currentN)
 
+			elif charStyle == "Illegible":
+				elem = etree.SubElement(lastElement,"gap")
+				elem.set("n",run.text.split("[")[1].split("]")[0])
+				elem.set("reason","illegible")
 
 			# set new character style
 			else:
@@ -1222,9 +1272,9 @@ def getElement(chStyle, lastElement):
 	return elem
 
 def convertDoc(inputFile):
-	global tableOpen, citOpen, listOpen, lgOpen, speechOpen, bodyOpen, backOpen, frontOpen, useDiv1, global_header_level, curPage, inDocument, global_list_level, noteNumber
+	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, frontOpen, useDiv1, global_header_level, curPage, inDocument, global_list_level, noteNumber
 	# reset global variables
-	tableOpen = citOpen = listOpen = lgOpen = speechOpen = False
+	tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
 	bodyOpen = backOpen = frontOpen = False
 	useDiv1 = True
 	global_header_level = 0
