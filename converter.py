@@ -10,13 +10,13 @@ import sys, os
 ########## GLOBAL VARIABLES ##########
 tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
 bodyOpen = backOpen = frontOpen = False
-useDiv1 = True
 global_header_level = 0
 isDir = False
 inDocument = False
 global_list_level = 0
 noteNumber = 0
 idTracker = []
+titlePage = None
 
 ########## FUNCTIONS ##########
 
@@ -94,8 +94,15 @@ def closingComments(lastElement):
 				lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 				global_header_level -= 1
 
+def doTitle(par, lastElement):
+	global titlePage
+	titlePage = etree.Element("titlePage")
+	docTitle = etree.SubElement(titlePage, "docTitle")
+	titlePart = etree.SubElement(docTitle, "titlePart")
+	titlePart.text = par.text
+
 def doHeaders(par, lastElement, root):
-	global frontOpen, bodyOpen, backOpen, global_header_level, useDiv1, idTracker
+	global frontOpen, bodyOpen, backOpen, global_header_level, idTracker
 	styName = par.style.name
 	closeStyle(styName, lastElement)
 
@@ -103,12 +110,12 @@ def doHeaders(par, lastElement, root):
 
 	#front
 	if "Heading 0 Front" == styName:
-		#lastElement = root.find('text')
 		while global_header_level > 0:
 	 		lastElement = lastElement.getparent()
 	 		lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 	 		global_header_level -= 1
 	 	lastElement = lastElement.getparent()
+		lastElement = root.find('text')
 		#global_header_level = 0
 		front = etree.SubElement(lastElement, "front")
 		front.set("id", "a")
@@ -116,15 +123,17 @@ def doHeaders(par, lastElement, root):
 		head = etree.SubElement(front, "head")				
 		head.text = par.text
 		frontOpen = True
+		if titlePage is not None:
+			front.append(titlePage)
 		return front
 	#body
 	elif "Heading 0 Body" == styName:
-		#lastElement = root.find('text')
 		while global_header_level > 0:
 				lastElement = lastElement.getparent()
 				lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 				global_header_level -= 1
 		lastElement = lastElement.getparent()
+		lastElement = root.find('text')
 		#global_header_level = 0
 		body = etree.SubElement(lastElement,"body")
 		body.set("id", "b")
@@ -136,12 +145,12 @@ def doHeaders(par, lastElement, root):
 		return body
 	#back sections
 	elif "Heading 0 Back" == styName:
-		#lastElement = root.find('text')
 		while global_header_level > 0:
 	  		lastElement = lastElement.getparent()
 	  		lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 	  		global_header_level -= 1
 	  	lastElement = lastElement.getparent()
+		lastElement = root.find('text')
 		#global_header_level = 0
 		back = etree.SubElement(lastElement, "back")
 		back.set("id", "c")
@@ -156,13 +165,9 @@ def doHeaders(par, lastElement, root):
 	elif "Heading" in styName:
 		#if no front, body, or back divisions, insert default body division 
 		if not frontOpen and not bodyOpen and not backOpen:
-			lastElement = root.find('text')
-			body = etree.SubElement(lastElement, "body")
-			body.set("id", "b")
-			idTracker = [0]
-			bodyOpen = True
-			lastElement = body
-			global_header_level = 0
+			print "\t Warning (IMPROPER HEADER NESTING): all Headings must be inside Front, Body, or Back"
+			print "\t\t Header text: " + par.text
+			
 		
 		headingNum = styName.split(" ")[1]
 		
@@ -171,7 +176,7 @@ def doHeaders(par, lastElement, root):
 			
 			if headingNum-1 > global_header_level:
 				print "\t Warning (IMPROPER HEADER NESTING): Jumped from Heading " + str(global_header_level) + " to Heading " + str(headingNum)
-				print "\t\t Header name: " + par.text
+				print "\t\t Header text: " + par.text
 
 
 
@@ -302,7 +307,7 @@ def closeStyle(styName, lastElement):
 			nestedCitOpen = False
 			if lgOpen:
 				lgOpen = False
-				return lastElement.getparent().getparent().getparent().getparent()
+				return lastElement.getparent().getparent().getparent()
 			else:
 				return lastElement.getparent().getparent()
 		else:
@@ -325,7 +330,7 @@ def closeStyle(styName, lastElement):
 			nestedSpeechOpen = False
 			if lgOpen:
 				lgOpen = False
-				return lastElement.getparent().getparent().getparent().getparent()
+				return lastElement.getparent().getparent().getparent()
 			else:
 				return lastElement.getparent().getparent()
 		else:
@@ -432,10 +437,9 @@ def doParaStyles(par, prevSty, lastElement):
 				print "\t Warning (IMPROPER CITATION NESTING): " + styName + " must be preceded by a Verse Citation"
 			
 			nestedCitOpen = True
-			l = etree.SubElement(lastElement,"l")
-			lg = etree.SubElement(l,"lg")
-			subL = etree.SubElement(lg,"l")
-			iterateRange(par,subL)
+			lg = etree.SubElement(lastElement,"lg")
+			l = etree.SubElement(lg,"l")
+			iterateRange(par,l)
 			lgOpen = True
 			return lg
 
@@ -456,7 +460,7 @@ def doParaStyles(par, prevSty, lastElement):
 
 		if cur_list_level-1 > global_list_level:
 			print "\t Warning (IMPROPER LIST NESTING): Jumped from List " + str(global_list_level) + " to List " + str(cur_list_level)
-			print "\t\t Header name: " + par.text
+			print "\t\t List text: " + par.text
 
 		# push new nested list level (or first level)
 		if cur_list_level > global_list_level:
@@ -518,10 +522,9 @@ def doParaStyles(par, prevSty, lastElement):
 				print "\t Warning (IMPROPER SPEECH NESTING): " + styName + " must be preceded by a Speech Verse"
 
 			nestedSpeechOpen = True
-			l = etree.SubElement(lastElement,"l")
-			lg = etree.SubElement(l,"lg")
-			subL = etree.SubElement(lg,"l")
-			iterateRange(par,subL)
+			lg = etree.SubElement(lastElement,"lg")
+			l = etree.SubElement(lg,"l")
+			iterateRange(par,l)
 			lgOpen = True
 			return lg
 
@@ -604,12 +607,13 @@ def iterateRange(par, lastElement):
 			#handle displaying link text next to tag
 			prevCharStyle = charStyle
 
-		elif charStyle == "Title":
-			titlePage = etree.SubElement(lastElement,"titlePage")
-			docTitle = etree.SubElement(titlePage, "docTitle")
-			titlePart = etree.SubElement(docTitle, "titlePart")
-			titlePart.text = run.text
-			prevCharStyle = charStyle
+		# TITLE IS NOT A CHARACTER STYLE
+		# elif charStyle == "Title":
+		# 	titlePage = etree.SubElement(lastElement,"titlePage")
+		# 	docTitle = etree.SubElement(titlePage, "docTitle")
+		# 	titlePart = etree.SubElement(docTitle, "titlePart")
+		# 	titlePart.text = run.text
+		# 	prevCharStyle = charStyle
 
 		else:
 
@@ -1074,16 +1078,16 @@ def getElement(chStyle, lastElement):
 	return elem
 
 def convertDoc(inputFile):
-	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, frontOpen, useDiv1, global_header_level, inDocument, global_list_level, noteNumber, idTracker
+	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, frontOpen, global_header_level, inDocument, global_list_level, noteNumber, idTracker, titlePage
 	# reset global variables
 	tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
 	bodyOpen = backOpen = frontOpen = False
-	useDiv1 = True
 	global_header_level = 0
 	inDocument = False
 	global_list_level = 0
 	noteNumber = 0
 	idTracker = []
+	titlePage = None
 
 	# read input file
 	document = Document(inputFile)
@@ -1092,14 +1096,6 @@ def convertDoc(inputFile):
 
 	# check for unstylized italic usage?
 	document = convertItalics(document)
-
-	# useDiv1		--> use numbered div (<div#> )	true by default
-	# not useDiv1	--> use generic div (<div n=#>)	true for Tibetan style outlines
-	#												'#' = nesting level
-	for sty in document.styles:
-		if "Heading 8" in sty.name:	
-			useDiv1 = False
-			break
 
 	# process metadata table
 	try:
@@ -1131,6 +1127,11 @@ def convertDoc(inputFile):
 			#doTable(par, t)
 		elif inDocument:
 			lastElement = doParaStyles(par, prevSty, lastElement)
+		elif "Title" == par.style.name:
+			doTitle(par, lastElement)
+		else:
+			print "\t Warning (IMPROPER HEADER NESTING): All paragraphs other than Title must be inside Front, Body, or Back"
+			print "\t\t Paragraph text: " + par.text
 		prevSty = par.style.name
 
 	closingComments(lastElement)
