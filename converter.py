@@ -75,11 +75,9 @@ def doMetadata(metaTable):
 	#PROBLEMS
 	metaText = metaText.replace("{Problem Cell 1}", metaTable.cell(42, 1).text)	
 	metaText = metaText.replace("{Problem Cell 2}", metaTable.cell(42, 3).text)	
-	
 	#DATE
 	metaText = metaText.replace("{Digital Creation Date}", str(date.today()))	
 
-	#if teiHeader.dat ever ends in something other than "<text>", change this
 	metaText += "</text></TEI.2>"
 
 	return metaText
@@ -104,37 +102,40 @@ def doTitle(par, lastElement):
 def doHeaders(par, lastElement, root):
 	global frontOpen, bodyOpen, backOpen, global_header_level, idTracker
 	styName = par.style.name
+	#print styName
 	closeStyle(styName, lastElement)
 
-	#print styName
-
-	#front
+	# front
 	if "Heading 0 Front" == styName:
+		# close out previous paragraphs
 		while global_header_level > 0:
 	 		lastElement = lastElement.getparent()
 	 		lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 	 		global_header_level -= 1
 	 	lastElement = lastElement.getparent()
 		lastElement = root.find('text')
-		#global_header_level = 0
+		# create Front section
 		front = etree.SubElement(lastElement, "front")
 		front.set("id", "a")
 		idTracker = [0]
 		head = etree.SubElement(front, "head")				
 		head.text = par.text
 		frontOpen = True
+		# add title at the top of Front
 		if titlePage is not None:
 			front.append(titlePage)
 		return front
-	#body
+
+	# body
 	elif "Heading 0 Body" == styName:
+		# close out previous paragraphs
 		while global_header_level > 0:
 				lastElement = lastElement.getparent()
 				lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 				global_header_level -= 1
 		lastElement = lastElement.getparent()
 		lastElement = root.find('text')
-		#global_header_level = 0
+		# create Body section
 		body = etree.SubElement(lastElement,"body")
 		body.set("id", "b")
 		idTracker = [0]
@@ -143,15 +144,17 @@ def doHeaders(par, lastElement, root):
 		frontOpen = False
 		bodyOpen = True
 		return body
-	#back sections
+
+	# back 
 	elif "Heading 0 Back" == styName:
+		# close out previous paragraphs
 		while global_header_level > 0:
 	  		lastElement = lastElement.getparent()
 	  		lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 	  		global_header_level -= 1
 	  	lastElement = lastElement.getparent()
 		lastElement = root.find('text')
-		#global_header_level = 0
+		# create Back section
 		back = etree.SubElement(lastElement, "back")
 		back.set("id", "c")
 		idTracker = [0]
@@ -161,14 +164,13 @@ def doHeaders(par, lastElement, root):
 		backOpen = True
 		return back
 	
-	#do divs within the body
+	#do header divs within front/body/back
 	elif "Heading" in styName:
-		#if no front, body, or back divisions, insert default body division 
+		#if no front/body/back, print warning 
 		if not frontOpen and not bodyOpen and not backOpen:
 			print "\t Warning (IMPROPER HEADER NESTING): all Headings must be inside Front, Body, or Back"
 			print "\t\t Header text: " + par.text
 			
-		
 		headingNum = styName.split(" ")[1]
 		
 		if headingNum.isdigit():
@@ -178,12 +180,9 @@ def doHeaders(par, lastElement, root):
 				print "\t Warning (IMPROPER HEADER NESTING): Jumped from Heading " + str(global_header_level) + " to Heading " + str(headingNum)
 				print "\t\t Header text: " + par.text
 
-
-
 			# push new nested level
 			if headingNum > global_header_level:
 				while headingNum != global_header_level:
-
 					# Calculate <div> id
 					curID = ""
 					if frontOpen:
@@ -205,11 +204,10 @@ def doHeaders(par, lastElement, root):
 					# push new level
 					global_header_level += 1
 
-					# Create <div> on next level pushed in
+					# Create <div> on current (newly pushed) level
 					lastElement = etree.SubElement(lastElement,"div")
 					lastElement.set("n",str(global_header_level))
 					lastElement.set("id", curID)
-
 					head = etree.SubElement(lastElement,"head")
 					head.text = par.text
 
@@ -239,14 +237,13 @@ def doHeaders(par, lastElement, root):
 				for i in range(1,global_header_level):
 					curID += "." + str(idTracker[i])
 
-				#create new div on current level
 				lastElement = lastElement.getparent()
 				lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 
+				#create div on current (or newly popped) level
 				lastElement = etree.SubElement(lastElement,"div")
 				lastElement.set("n",str(global_header_level))
 				lastElement.set("id", curID)
-
 				head = etree.SubElement(lastElement,"head")
 				head.text = par.text
 				return lastElement
@@ -357,14 +354,13 @@ def doParaStyles(par, prevSty, lastElement):
 	global listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, global_list_level 
 
 	styName = par.style.name
-
+	#print styName
 	lastElement = closeStyle(styName, lastElement)
 
 	if  "Paragraph" == styName or "Normal" == styName:
 		p = etree.SubElement(lastElement, "p")
 		iterateRange(par, p)
 		return lastElement
-	
 
 	# fix this based on what Than/David say
 	elif "Paragraph Continued" == styName or "ParagraphContinued" == styName:
@@ -414,7 +410,6 @@ def doParaStyles(par, prevSty, lastElement):
 		elif "Paragraph Citation Nested" == styName:
 			if "Paragraph Citation" not in prevSty and "Citation Prose 2" not in prevSty and "Z-Depracated Paragraph Citation" not in prevSty:
 				print "\t Warning (IMPROPER CITATION NESTING): " + styName + " must be preceded by Paragraph Citation"
-
 			nestedCitOpen = True
 			quote = etree.SubElement(lastElement,"quote")
 			iterateRange(par, quote)
@@ -435,7 +430,6 @@ def doParaStyles(par, prevSty, lastElement):
 		elif "Citation Verse Nested 1" == styName or "Verse Citation Nested 1" == styName:
 			if "Citation Verse" not in prevSty and "Verse Citation" not in prevSty:
 				print "\t Warning (IMPROPER CITATION NESTING): " + styName + " must be preceded by a Verse Citation"
-			
 			nestedCitOpen = True
 			lg = etree.SubElement(lastElement,"lg")
 			l = etree.SubElement(lg,"l")
@@ -481,7 +475,6 @@ def doParaStyles(par, prevSty, lastElement):
 
 	elif "Speech" in styName:
 
-		# REMOVE WHEN TEST DOC IS CORRECTED
 		if "Speech Inline" == styName:
 			q = etree.SubElement(lastElement,"q")
 			iterateRange(par, q)
@@ -499,7 +492,6 @@ def doParaStyles(par, prevSty, lastElement):
 		elif "Speech Prose Nested" == styName or "Speech Paragraph Nested" == styName:
 			if "Speech Prose" not in prevSty and "Speech Paragraph" not in prevSty:
 				print "\t Warning (IMPROPER SPEECH NESTING): " + styName +  "must be preceded by Speech Paragraph"
-
 			nestedSpeechOpen = True
 			q = etree.SubElement(lastElement,"q")
 			iterateRange(par, q)
@@ -520,7 +512,6 @@ def doParaStyles(par, prevSty, lastElement):
 		elif "Speech Verse 1 Nested" == styName: 
 			if "Speech Verse" not in prevSty:
 				print "\t Warning (IMPROPER SPEECH NESTING): " + styName + " must be preceded by a Speech Verse"
-
 			nestedSpeechOpen = True
 			lg = etree.SubElement(lastElement,"lg")
 			l = etree.SubElement(lg,"l")
@@ -553,7 +544,6 @@ def doParaStyles(par, prevSty, lastElement):
 		else:
 			print "\t Warning (Paragraph Style): " + styName + " is not a supported Verse Style"
 	 		return lastElement
-
 
 	else:
 		print "\t Warning (Paragraph Style): " + styName + " is not supported"
@@ -591,8 +581,8 @@ def iterateRange(par, lastElement):
 					lastElement.text += run.text
 				except TypeError:
 					lastElement.text = run.text
-			prevCharStyle = styName
-
+			#prevCharStyle = styName
+			prevCharStyle = charStyle
 
 		elif charStyle == "Footnote Text" or charStyle == "Endnote Text":
 			note = etree.SubElement(lastElement,"note")
@@ -607,16 +597,7 @@ def iterateRange(par, lastElement):
 			#handle displaying link text next to tag
 			prevCharStyle = charStyle
 
-		# TITLE IS NOT A CHARACTER STYLE
-		# elif charStyle == "Title":
-		# 	titlePage = etree.SubElement(lastElement,"titlePage")
-		# 	docTitle = etree.SubElement(titlePage, "docTitle")
-		# 	titlePart = etree.SubElement(docTitle, "titlePart")
-		# 	titlePart.text = run.text
-		# 	prevCharStyle = charStyle
-
 		else:
-
 			# Page Number,digital
 			if "Page Number" == charStyle:
 				elem = etree.SubElement(lastElement,"milestone")
@@ -641,48 +622,24 @@ def iterateRange(par, lastElement):
 				elem.set("n",temp)
 				elem.set("rend","digital")
 
-			# Page Number Number Print Edition,pnp"
 			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
-				if charStyle == prevCharStyle:
-					currentN = elem.get("n")
-					temp = run.text
-					if run.text[0]=="[":
-						temp = temp[1:]
-					if run.text[-1]=="]":
-						temp = temp[:-1]
-					currentN += temp
-					elem.set("n", currentN)
-				else:
+				temp = run.text.replace("page","").replace("[","").replace("]","").strip()
+				if len(temp)>0:
 					elem = etree.SubElement(lastElement,"milestone")
 					elem.set("unit","page")
-					temp = run.text
-					if run.text[0]=="[":
-						temp = temp[1:]
-					if run.text[-1]=="]":
-						temp = temp[:-1]
-
-					elem.set("n", temp)
+					if "-" in temp:
+						temp = temp.split("-")
+						elem.set("n", temp[1])
+						elem.set("ed", temp[0])
+					else:
+						elem.set("n", temp)
 
 			# Line Number Print,lnp
 			elif "Line Number Print" in charStyle or "TibLineNumber"==charStyle:
-				if charStyle == prevCharStyle:
-					currentN = elem.get("n")
-					temp = run.text
-					if run.text[0]=="[":
-						temp = temp[1:]
-					if run.text[-1]=="]":
-						temp = temp[:-1]
-					currentN += temp
-					elem.set("n", currentN)
-
-				else:
+				temp = run.text.replace("line","").replace("[","").replace("]","").strip()
+				if len(temp)>0:
 					elem = etree.SubElement(lastElement,"milestone")
 					elem.set("unit","line")
-					temp = run.text
-					if run.text[0]=="[":
-						temp = temp[1:]
-					if run.text[-1]=="]":
-						temp = temp[:-1]
 					elem.set("n",temp)
 
 				
@@ -865,7 +822,7 @@ def getElement(chStyle, lastElement):
 	 	elem.set("type","external")
 	 	elem.set("level","m")
 
-	elif chStyle == "Title of Chapter" or chStyle == "Colophon Chapter Title": #or Titles of Chapters?
+	elif chStyle == "Title of Chapter" or chStyle == "Colophon Chapter Title":
 		elem = etree.SubElement(lastElement,"title")
 	 	elem.set("type","internal")
 	 	elem.set("level","a")
@@ -875,15 +832,15 @@ def getElement(chStyle, lastElement):
 		elem = etree.SubElement(lastElement,"unclear")
 
 	elif chStyle == "X-Author Generic":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 		elem.set("n","Author")
 
 	elif chStyle == "X-Author Indian":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 		elem.set("n","Author Indian")
 
 	elif chStyle == "X-Author Tibetan":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 		elem.set("n","Author Tibetan")
 
 	elif chStyle == "X-Dates" or chStyle == "Dates":
@@ -902,27 +859,27 @@ def getElement(chStyle, lastElement):
 		elem.set("rend","weak")
 
 	elif chStyle == "X-Mantra" or chStyle == "Mantra":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 		elem.set("n","Mantra")
 
 	elif chStyle == "X-Monuments" or chStyle == "Monuments":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 	 	elem.set("n","Monuments")
 
 	elif chStyle == "X-Name Buddhist Deity" or chStyle == "Name Buddhist  Deity":
-	 	elem = etree.SubElement(lastElement,"term")
+	 	elem = etree.SubElement(lastElement,"persName")
 	 	elem.set("n","bud_deity")
 
 	elif chStyle == "X-Name Buddhist Deity Collective":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"orgName")
 	 	elem.set("n","bud_deity_collective")
 
 	elif chStyle == "X-Name Clan" or chStyle == "Name Clan":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"orgName")
 		elem.set("n","clan")
 
 	elif chStyle == "X-Name Ethnicity" or chStyle == "Name Ethnicity":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"orgName")
 		elem.set("n","ethnicity")
 
 	elif chStyle == "X-Name Festival":
@@ -933,77 +890,77 @@ def getElement(chStyle, lastElement):
 		elem = etree.SubElement(lastElement,"term")
 
 	elif chStyle == "X-Name Lineage" or chStyle == "Name Lineage":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"term")  
 		elem.set("n","lineage")
 
 	elif chStyle == "X-Name Monastery" or chStyle == "Name organization monastery":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"orgName")
 	 	elem.set("n","monastery")
 
 	elif chStyle == "X-Name Organization" or chStyle == "Name Organization":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"orgName")
 		elem.set("n","organization")
 
 	elif chStyle == "X-Name Personal Human" or chStyle == "Name Personal Human":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName") 
 		elem.set("n","personal_human")
 
 	elif chStyle == "X-Name Personal Other":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 	 	elem.set("n","personal_other")
 
 	elif chStyle == "X-Name Place" or chStyle == "Name Place":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 		elem.set("n","place")
 
 	elif chStyle == "X-Religious Practice" or chStyle == "Name Ritual" or chStyle == "Name Religious Practice" or chStyle == "Religious Practice":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"term") 
 		elem.set("n","religious_practice")
 
 	elif chStyle == "X-Speaker Buddhist Deity" or chStyle == "Speaker Buddhist Deity":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 		elem.set("n","speaker_bud_deity")
 
 	elif chStyle == "X-Speaker Unknown":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 		elem.set("n","speaker_unknown")
 
 	elif chStyle == "X-Speaker Human" or chStyle == "Speaker Human":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 	 	elem.set("n","speaker_human")
 
 	elif chStyle == "X-Speaker Other" or chStyle == "Speaker Other":
-	 	elem = etree.SubElement(lastElement,"term")
+	 	elem = etree.SubElement(lastElement,"persName")
 	 	elem.set("n","speaker_other")
 
 	elif chStyle == "X-Term Chinese" or chStyle == "Lang Chinese":
-		elem = etree.SubElement(lastElement,"term")
-	 	elem.set("n","chi")
+		elem = etree.SubElement(lastElement,"rs") 
+	 	elem.set("lang","chi")
 
 	elif chStyle == "X-Term English" or chStyle == "Lang English":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","eng")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","eng")
 
 	elif chStyle == "X-Term Mongolian":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","mon")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","mon")
 
 	elif chStyle == "X-Term Pali" or chStyle == "Lang Pali":
-	 	elem = etree.SubElement(lastElement,"term")
-	 	elem.set("n","pal")
+	 	elem = etree.SubElement(lastElement,"rs")
+	 	elem.set("lang","pal")
 
 	elif chStyle == "X-Term Sanskrit" or chStyle == "Lang Sanskrit":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","san")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","san")
 
 	#guess for technical
 	elif chStyle == "X-Term Technical":
 	 	elem = etree.SubElement(lastElement,"term")
-	 	elem.set("n","tec")
+	 	elem.set("n","technical")
 
 	elif chStyle == "X-Term Tibetan" or chStyle == "Lang Tibetan":
 	 	elem = etree.SubElement(lastElement,"term")
-	 	elem.set("n","tib")
+	 	elem.set("lang","tib")
 
 	elif chStyle == "X-Text Group" or chStyle == "Text Group":
 		elem = etree.SubElement(lastElement,"title")
@@ -1013,49 +970,49 @@ def getElement(chStyle, lastElement):
 	# DEPRECATED LANGUAGES
 
 	elif chStyle == "Lang French":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","fre")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","fre")
 	
 	elif chStyle == "Lang German":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","ger")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","ger")
 	
 	elif chStyle == "Lang Japanese":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","jap")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","jap")
 	
 	elif chStyle == "Lang Korean":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","kor")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","kor")
 	
 	elif chStyle == "Lang Nepali":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","nep")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","nep")
 	
 	elif chStyle == "Lang Spanish":
-		elem = etree.SubElement(lastElement,"term")
-		elem.set("n","spa")
+		elem = etree.SubElement(lastElement,"rs")
+		elem.set("lang","spa")
 
 	# DEPRECATED
 	elif chStyle == "Speaker Generic":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"persName")
 		elem.set("n","speaker")
 
 	# not in new styles, but are in test doc
 	elif chStyle == "Name river" or chStyle == "Name River":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 		elem.set("n","river")
 
 	elif chStyle == "Name mountain" or chStyle == "Name Mountain":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 		elem.set("n","mountain")
 
 	elif chStyle == "Name lake" or chStyle == "Name Lake":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 		elem.set("n","lake")
 
 	elif chStyle == "Name geographical feature" or chStyle == "Name Geographical Feature":
-		elem = etree.SubElement(lastElement,"term")
+		elem = etree.SubElement(lastElement,"placeName")
 		elem.set("n","geographical_feature")
 
 	elif chStyle == "Pages":
@@ -1092,8 +1049,6 @@ def convertDoc(inputFile):
 	# read input file
 	document = Document(inputFile)
 
-	# convert endnotes to footnotes?
-
 	# check for unstylized italic usage?
 	document = convertItalics(document)
 
@@ -1110,8 +1065,6 @@ def convertDoc(inputFile):
 	parser = etree.XMLParser(ns_clean=True, recover=True, encoding='utf-8')
 	root = etree.fromstring(metaText, parser=parser)
 	#print etree.tostring(root, encoding='UTF-8', xml_declaration=False)
-
-	etree.DTD = "http://www.thlib.org:8080/cocoon/texts/catalogs/xtib3.dtd"
 
 	# iterate through paragraphs
 	lastElement = root.find('text')
@@ -1139,7 +1092,6 @@ def convertDoc(inputFile):
 	# create XML file
 	name = inputFile.split("/")[-1].split(".")[0] + '.xml'
 	file = open(name, "wb")
-	#toString = etree.tostring(root, pretty_print=True)
 	docType = "<!DOCTYPE TEI.2 SYSTEM \"http://www.thlib.org:8080/cocoon/texts/catalogs/xtib3.dtd\">"
 	toString = etree.tostring(root, encoding='UTF-8', xml_declaration=True, doctype=docType, pretty_print=True)
 	file.write(toString);
@@ -1159,11 +1111,13 @@ initialPath = os.path.join(os.getcwd(), sys.argv[1])
 if os.path.isdir(initialPath):
 	for item in os.listdir(initialPath):
 		currentPath = os.path.join(initialPath, item)
-		# simply ignore non-docx files
 		if item.endswith(".docx") and os.path.isfile(currentPath):
 			print "Converting " + item + " to XML..."
 			convertDoc(currentPath)
 			print "Conversion successful!"
+		# print warning for non-docx files
+		else:
+			print "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
 # user inputs docx file(s) directly
 else:
 	for item in sys.argv[1:]:
@@ -1172,8 +1126,9 @@ else:
 			print "Converting " + item + " to XML..."
 			convertDoc(currentPath)
 			print "Conversion successful!"
+		# print warning for non-docx files
 		else:
-			print "\t Argument Error: " + item + " is not a docx file in the current working directory"
+			print "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
 
 
 
