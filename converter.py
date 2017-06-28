@@ -82,9 +82,6 @@ def doMetadata(metaTable):
 
 	return metaText
 
-def convertItalics(doc):
-	return doc
-
 def closingComments(lastElement):
 	global global_header_level
 	while global_header_level > 0:
@@ -104,6 +101,8 @@ def doHeaders(par, lastElement, root):
 	styName = par.style.name
 	#print styName
 	closeStyle(styName, lastElement)
+
+	skippedHeader = False
 
 	# front
 	if "Heading 0 Front" == styName:
@@ -179,6 +178,7 @@ def doHeaders(par, lastElement, root):
 			if headingNum-1 > global_header_level:
 				print "\t Warning (IMPROPER HEADER NESTING): Jumped from Heading " + str(global_header_level) + " to Heading " + str(headingNum)
 				print "\t\t Header text: " + par.text
+				skippedHeader = True
 
 			# push new nested level
 			if headingNum > global_header_level:
@@ -209,7 +209,9 @@ def doHeaders(par, lastElement, root):
 					lastElement.set("n",str(global_header_level))
 					lastElement.set("id", curID)
 					head = etree.SubElement(lastElement,"head")
-					head.text = par.text
+					if not skippedHeader:
+						head.text = par.text
+					skippedHeader = False
 
 				return lastElement
 
@@ -251,16 +253,15 @@ def doHeaders(par, lastElement, root):
 		else:
 			print "\t Warning: Heading number of heading (" + styName + ") is NaN"
 
-#fix
-def doTable(par, t):
-	lst = etree.SubElement(lastElement,"list")
-	lst.set("rend","table")
-	for r in t.rows:
-		row = etree.SubElement(lst, "item")
-		for c in r.cells:			
-			cell = etree.SubElement(row, "rs")
-			iterateRange(par, cell)
-	return lastElement
+# def doTable(par, t):
+# 	lst = etree.SubElement(lastElement,"list")
+# 	lst.set("rend","table")
+# 	for r in t.rows:
+# 		row = etree.SubElement(lst, "item")
+# 		for c in r.cells:			
+# 			cell = etree.SubElement(row, "rs")
+# 			iterateRange(par, cell)
+# 	return lastElement
 
 def doNewList(styName, lastElement, cur_list_level):
 	lst = etree.SubElement(lastElement, "list")
@@ -545,6 +546,36 @@ def doParaStyles(par, prevSty, lastElement):
 			print "\t Warning (Paragraph Style): " + styName + " is not a supported Verse Style"
 	 		return lastElement
 
+
+
+	elif "Section" in styName:
+		if "Interstitial" in styName:
+	 		div = etree.SubElement(lastElement,"div")
+	 		div.set("type","interstitial")
+	 		head = etree.SubElement(div,"head")
+	 		p = etree.SubElement(div,"p")
+	 		p.text = par.text
+	 		return lastElement
+	 	ms = etree.SubElement(lastElement,"milestone")
+	 	if "Chapter Element" in styName:
+	 		ms.set("type","cle")
+		elif "Top Level" in styName or "Division" in styName: 
+	 		ms.set("unit","section")
+	 		if "Second" in styName:
+	 			ms.set("n","2")
+	 		elif "Third" in styName:
+	 			ms.set("n","3")
+	 		elif "Fourth" in styName:
+	 			ms.set("n","4")
+	 		else:
+	 			ms.set("n","1")
+		else:
+	 		print "\t Warning (Paragraph Style): " + styName + " is not a supported Section style"
+	 	ms.set("rend",par.text)
+	 	return lastElement
+
+
+
 	else:
 		print "\t Warning (Paragraph Style): " + styName + " is not supported"
 		p = etree.SubElement(lastElement, "p")
@@ -569,6 +600,12 @@ def iterateRange(par, lastElement):
 	for run in runs:
 		#charStyle is the current character style.
 		charStyle = run.style.name
+
+		# place entire run in weak emphasis tag if italics
+		#if run.italic:
+		#	lastElement = etree.SubElement(lastElement,"hi")
+		#	lastElement.set("rend","weak")
+
 		# if character style of current run is same as current paragraph style
 		if charStyle == styName or charStyle == "Default Paragraph Font":
 			try:
@@ -622,6 +659,7 @@ def iterateRange(par, lastElement):
 				elem.set("n",temp)
 				elem.set("rend","digital")
 
+
 			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
 				temp = run.text.replace("page","").replace("[","").replace("]","").strip()
 				if len(temp)>0:
@@ -642,7 +680,6 @@ def iterateRange(par, lastElement):
 					elem.set("unit","line")
 					elem.set("n",temp)
 
-				
 			elif charStyle == "Illegible":
 				elem = etree.SubElement(lastElement,"gap")
 				elem.set("n",run.text.split("[")[1].split("]")[0])
@@ -672,6 +709,10 @@ def iterateRange(par, lastElement):
 				else:
 					elem.text = run.text
 			prevCharStyle = charStyle
+
+		#pop out of emphasis tag if italics
+		#if run.italic:
+		#	lastElement = lastElement.getparent()
 
 #implement fully	
 def iterateNote(run, lastElement, styName):
@@ -735,37 +776,25 @@ def iterateNote(run, lastElement, styName):
 
 			# Page Number Number Print Edition,pnp"
 			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
-				if charStyle == prevCharStyle:
-					currentN = elem.get("n")
-					temp = char
-					if char[0]=="[":
-						temp = temp[1:]
-					if char[-1]=="]":
-						temp = temp[:-1]
-					currentN += temp
-					elem.set("n", currentN)
-				else:
+				temp = run.text.replace("page","").replace("[","").replace("]","").strip()
+				if len(temp)>0:
 					elem = etree.SubElement(lastElement,"milestone")
 					elem.set("unit","page")
-					temp = char
-					if char[0]=="[":
-						temp = temp[1:]
-					if char[-1]=="]":
-						temp = temp[:-1]
-
-					elem.set("n", temp)
+					if "-" in temp:
+						temp = temp.split("-")
+						elem.set("n", temp[1])
+						elem.set("ed", temp[0])
+					else:
+						elem.set("n", temp)
 
 			# Line Number Print,lnp
 			elif "Line Number Print" in charStyle or "TibLineNumber"==charStyle:
-				if charStyle == prevCharStyle:
-					currentN = elem.get("n")
-					temp = char
-					if char[0]=="[":
-						temp = temp[1:]
-					if char[-1]=="]":
-						temp = temp[:-1]
-					currentN += temp
-					elem.set("n", currentN)
+				temp = run.text.replace("line","").replace("[","").replace("]","").strip()
+				if len(temp)>0:
+					elem = etree.SubElement(lastElement,"milestone")
+					elem.set("unit","line")
+					elem.set("n",temp)
+
 
 			elif charStyle == "Illegible":
 				elem = etree.SubElement(lastElement,"gap")
@@ -1049,9 +1078,6 @@ def convertDoc(inputFile):
 	# read input file
 	document = Document(inputFile)
 
-	# check for unstylized italic usage?
-	document = convertItalics(document)
-
 	# process metadata table
 	try:
 		metaTable = document.tables[0]
@@ -1074,10 +1100,6 @@ def convertDoc(inputFile):
 			#inDocument avoids including any paragraphs before the first structural heading
 			inDocument = True
 			lastElement = doHeaders(par, lastElement, root)
-		#elif tableOpen:
-			#if a table is open and it ends in this paragraph, set tableOpen to false
-		#elif "<w:tbl>" in p.text: 			#p.containsTable:
-			#doTable(par, t)
 		elif inDocument:
 			lastElement = doParaStyles(par, prevSty, lastElement)
 		elif "Title" == par.style.name:
