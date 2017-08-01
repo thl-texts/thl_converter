@@ -5,7 +5,7 @@
 from docx import Document
 from lxml import etree
 from datetime import date
-import sys, os
+import sys, os, zipfile
 
 ########## GLOBAL VARIABLES ##########
 tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
@@ -14,11 +14,55 @@ global_header_level = 0
 isDir = False
 inDocument = False
 global_list_level = 0
-noteNumber = 0
+footnoteNum = endnoteNum = 0
 idTracker = []
 titlePage = None
+footnotes = []
+endnotes = []
 
 ########## FUNCTIONS ##########
+
+def doFootEndnotes(inputFile):
+	global footnotes, endnotes
+	# note:	the global footnote and endnote lists are 0 indexed (e.g. footnotes[0] is the footnote #1)
+
+	document = zipfile.ZipFile(inputFile)
+
+	# write content of footnotes.xml into footnotes[]
+
+	xml_content = document.read('word/footnotes.xml')
+	root = etree.fromstring(xml_content)
+
+	curIndex = 0
+
+	foot = root.findall('w:footnote', root.nsmap)
+	for f in foot:
+		if curIndex > 1:
+			text = f.findall('.//w:t', root.nsmap)
+			s = ""
+			for t in text:
+				s += t.text
+			footnotes.append(s)
+		curIndex += 1
+
+	# write content of endnotes.xml into endnotes[]
+	
+	xml_content = document.read('word/endnotes.xml')
+	root = etree.fromstring(xml_content)
+
+	curIndex = 0
+
+	end = root.findall('w:endnote', root.nsmap)
+	for f in end:
+		if curIndex > 1:
+			text = f.findall('.//w:t', root.nsmap)
+			s = ""
+			for t in text:
+				s += t.text
+			endnotes.append(s)
+		curIndex += 1
+	document.close()
+
 
 def doMetadata(metaTable):
 	#load metadata schema
@@ -117,8 +161,9 @@ def doHeaders(par, lastElement, root):
 		front = etree.SubElement(lastElement, "front")
 		front.set("id", "a")
 		idTracker = [0]
-		head = etree.SubElement(front, "head")				
-		head.text = par.text
+		head = etree.SubElement(front, "head")
+		iterateRange(par, head)			
+		#head.text = par.text
 		frontOpen = True
 		# add title at the top of Front
 		if titlePage is not None:
@@ -139,7 +184,8 @@ def doHeaders(par, lastElement, root):
 		body.set("id", "b")
 		idTracker = [0]
 		head = etree.SubElement(body, "head")
-		head.text = par.text
+		iterateRange(par, head)	
+		#head.text = par.text
 		frontOpen = False
 		bodyOpen = True
 		return body
@@ -158,7 +204,8 @@ def doHeaders(par, lastElement, root):
 		back.set("id", "c")
 		idTracker = [0]
 		head = etree.SubElement(back, "head")
-		head.text = par.text
+		iterateRange(par, head)	
+		#head.text = par.text
 		bodyOpen = False
 		backOpen = True
 		return back
@@ -210,7 +257,8 @@ def doHeaders(par, lastElement, root):
 					lastElement.set("id", curID)
 					head = etree.SubElement(lastElement,"head")
 					if not skippedHeader:
-						head.text = par.text
+						iterateRange(par, head)	
+						#head.text = par.text
 					skippedHeader = False
 
 				return lastElement
@@ -247,7 +295,8 @@ def doHeaders(par, lastElement, root):
 				lastElement.set("n",str(global_header_level))
 				lastElement.set("id", curID)
 				head = etree.SubElement(lastElement,"head")
-				head.text = par.text
+				iterateRange(par, head)	
+				#head.text = par.text
 				return lastElement
 
 		else:
@@ -554,7 +603,8 @@ def doParaStyles(par, prevSty, lastElement):
 	 		div.set("type","interstitial")
 	 		head = etree.SubElement(div,"head")
 	 		p = etree.SubElement(div,"p")
-	 		p.text = par.text
+	 		iterateRange(par, p)	
+	 		#p.text = par.text
 	 		return lastElement
 	 	ms = etree.SubElement(lastElement,"milestone")
 	 	if "Chapter Element" in styName:
@@ -583,6 +633,8 @@ def doParaStyles(par, prevSty, lastElement):
 		return lastElement
 
 def iterateRange(par, lastElement):
+
+	global footenotes, endnotes
 
 	#styName is the current paragraph style
 	styName = par.style.name
@@ -619,13 +671,6 @@ def iterateRange(par, lastElement):
 				except TypeError:
 					lastElement.text = run.text
 			#prevCharStyle = styName
-			prevCharStyle = charStyle
-
-		elif charStyle == "Footnote Text" or charStyle == "Endnote Text":
-			note = etree.SubElement(lastElement,"note")
-			noteNumber += 1
-			note.set("n",noteNumber)
-			iterateNote(run, note, styName)
 			prevCharStyle = charStyle
 
 		elif charStyle == "Hyperlink":
@@ -707,7 +752,12 @@ def iterateRange(par, lastElement):
 					except TypeError:
 						lastElement.text = run.text
 				else:
-					elem.text = run.text
+					if "footnote" in charStyle or "Footnote" in charStyle:
+						elem.text = footnotes[footnoteNum-1]
+					elif "endnote" in charStyle or "Endnote" in charStyle:
+						elem.text = endnotes[endnoteNum-1]
+					else:
+						elem.text = run.text
 			prevCharStyle = charStyle
 
 		#pop out of emphasis tag if italics
@@ -814,6 +864,8 @@ def iterateNote(run, lastElement, styName):
 			prevCharStyle = charStyle
 			
 def getElement(chStyle, lastElement):
+
+	global footnoteNum, endnoteNum
 
 	if chStyle == "Added by Editor":
 	 	elem = etree.SubElement(lastElement,"add")
@@ -1048,14 +1100,19 @@ def getElement(chStyle, lastElement):
 		elem = etree.SubElement(lastElement,"num")
 		elem.set("type","pagerange")
 
-
 	elif chStyle == "Document Map":
 		#no warning
 		return "none type"
 
-	elif (chStyle == "Footnote Reference" or chStyle == "footnote reference" or chStyle == "Endnote Reference" or chStyle == "endnote reference"):
-		#no warning
-		return "none type"
+	elif "Footnote" in chStyle or "footnote" in chStyle:
+		footnoteNum += 1
+		elem = etree.SubElement(lastElement,"note")
+		elem.set("n",str(footnoteNum))
+
+	elif "Endnote" in chStyle or "endnote" in chStyle:
+		endnoteNum += 1
+		elem = etree.SubElement(lastElement,"note")
+		elem.set("n",str(endnoteNum))
 
 	else:
 	 	print "\t Warning (Character Style): " + chStyle + " is not supported"
@@ -1064,16 +1121,19 @@ def getElement(chStyle, lastElement):
 	return elem
 
 def convertDoc(inputFile):
-	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, frontOpen, global_header_level, inDocument, global_list_level, noteNumber, idTracker, titlePage
+	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage
 	# reset global variables
 	tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
 	bodyOpen = backOpen = frontOpen = False
 	global_header_level = 0
 	inDocument = False
 	global_list_level = 0
-	noteNumber = 0
+	footnoteNum = endnoteNum = 0
 	idTracker = []
 	titlePage = None
+
+	# process foot/endnotes
+	doFootEndnotes(inputFile)
 
 	# read input file
 	document = Document(inputFile)
