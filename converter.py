@@ -78,7 +78,13 @@ def doMetadata(metaTable):
 	#BASIC METADATA
 	metaText = metaText.replace("{Title of Text}", metaTable.cell(1, 3).text)	
 	metaText = metaText.replace("{Cover Page}", metaTable.cell(2, 3).text)	
-	metaText = metaText.replace("{Title on Cover}", metaTable.cell(3, 3).text)	
+
+	temp = metaTable.cell(3, 3).text.encode('utf-8').splitlines()
+	metaText = metaText.replace("{Cover Title Tib}", temp[0].decode('utf-8'))
+	metaText = metaText.replace("{Cover Title San in Tib}", temp[1].decode('utf-8'))
+	metaText = metaText.replace("{Cover Title San in Lanydza}", temp[2].decode('utf-8'))
+
+
 	metaText = metaText.replace("{Title on Spine}", metaTable.cell(4, 3).text)	
 	metaText = metaText.replace("{Margin Title}", metaTable.cell(5, 3).text)	
 	metaText = metaText.replace("{Author of Text}", metaTable.cell(6, 3).text)	
@@ -680,34 +686,13 @@ def iterateRange(par, lastElement):
 			prevCharStyle = charStyle
 
 		else:
-			# Page Number,digital
-			if "Page Number" == charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","page")
-				temp = run.text
-				if run.text[0]=="[":
-					temp = temp[1:]
-				if run.text[-1]=="]":
-					temp = temp[:-1]
-				elem.set("n",temp)
-				elem.set("rend","digital")
-
-			# Line Number,digital
-			elif "Line Number" == charStyle:
-				elem = etree.SubElement(lastElement,"milestone")
-				elem.set("unit","line")
-				temp = run.text
-				if run.text[0]=="[":
-					temp = temp[1:]
-				if run.text[-1]=="]":
-					temp = temp[:-1]
-				elem.set("n",temp)
-				elem.set("rend","digital")
-
-
-			elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
+			# Page Number Print / Page Number
+			if "Page Number" in charStyle or "PageNumber" == charStyle:				
 				temp = run.text.replace("page","").replace("[","").replace("]","").strip()
-				if len(temp)>0:
+				if prevCharStyle == charStyle:
+					prev = elem.get("n")
+					elem.set("n",prev+temp)
+				else:
 					elem = etree.SubElement(lastElement,"milestone")
 					elem.set("unit","page")
 					if "-" in temp:
@@ -716,14 +701,21 @@ def iterateRange(par, lastElement):
 						elem.set("ed", temp[0])
 					else:
 						elem.set("n", temp)
+					if "Page Number" == charStyle:
+						elem.set("rend","digital")
 
-			# Line Number Print,lnp
-			elif "Line Number Print" in charStyle or "TibLineNumber"==charStyle:
+			# Line Number Print / Line Number
+			elif "Line Number" in charStyle or "TibLineNumber"==charStyle:
 				temp = run.text.replace("line","").replace("[","").replace("]","").strip()
-				if len(temp)>0:
+				if prevCharStyle == charStyle:
+					prev = elem.get("n")
+					elem.set("n",prev+temp)
+				else:
 					elem = etree.SubElement(lastElement,"milestone")
 					elem.set("unit","line")
 					elem.set("n",temp)
+					if "Line Number" == charStyle:
+						elem.set("rend","digital")
 
 			elif charStyle == "Illegible":
 				elem = etree.SubElement(lastElement,"gap")
