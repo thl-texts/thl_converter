@@ -19,6 +19,7 @@ idTracker = []
 titlePage = None
 footnotes = []
 endnotes = []
+root = None
 
 ########## FUNCTIONS ##########
 
@@ -80,51 +81,58 @@ def doMetadata(metaTable):
 	metaText = metaText.replace("{Cover Page}", metaTable.cell(2, 3).text)	
 
 	temp = metaTable.cell(3, 3).text.encode('utf-8').splitlines()
-	metaText = metaText.replace("{Cover Title Tib}", temp[0].decode('utf-8'))
-	metaText = metaText.replace("{Cover Title San in Tib}", temp[1].decode('utf-8'))
-	metaText = metaText.replace("{Cover Title San in Lanydza}", temp[2].decode('utf-8'))
+	if len(temp) > 0:
+		metaText = metaText.replace("{Cover Title Tib}", temp[0].decode('utf-8'))
+	if len(temp) > 1:
+		metaText = metaText.replace("{Cover Title San in Tib}", temp[1].decode('utf-8'))
+	if len(temp) > 2:
+		metaText = metaText.replace("{Cover Title San in Lanydza}", temp[2].decode('utf-8'))
 
+	# String Labels in the XML and corresponding metadata table cell numbers (X, Y)
+	# For inserting metadata into template. Could have different versions of this for different tables.
+	metaRows = [
+		("{Title on Spine}", 4, 3),
+		("{Margin Title}", 5, 3),
+		("{Author of Text}", 6, 3),
+		("{Name of Collection}", 7, 3),
+		("{Publisher Name}", 9, 3),
+		("{Publisher Place}", 10, 3),
+		("{Publisher Date}", 11, 3),
+		("{ISBN}", 13, 3),
+		("{Library Call-number}", 14, 3),
+		("{Other ID number}", 15, 3),
+		("{Volume Letter}", 16, 3),
+		("{Volume Number}", 17, 3),
+		("{Pagination of Text}", 18, 3),
+		("{Pages Represented in this file}", 19, 3),
+		("{Name of Agent Creating Etext}", 21, 3),
+		("{Date Process Begun}", 22, 3),
+		("{Date Process Finished}", 23, 3),
+		("{Place of Process}", 24, 3),
+		("{Method of Process (OCR, input)}", 25, 3),
+		("{Name of Proofreader}", 27, 3),
+		("{Date Proof Began}", 28, 3),
+		("{Date Proof Finished}", 29, 3),
+		("{Place of Proof}", 30, 3),
+		("{Name of Markup-er}", 32, 3),
+		("{Date Markup Began}", 33, 3),
+		("{Date Markup Finished}", 34, 3),
+		("{Place of Markup}", 35, 3),
+		("{Name of Converter}", 37, 3),
+		("{Date Conversion Began}", 38, 3),
+		("{Date Conversion Finished}", 39, 3),
+		("{Place of Conversion}", 40, 3),
+		("{Problem Cell 1}", 42, 1),
+		("{Problem Cell 2}", 42, 3)
+	]
 
-	metaText = metaText.replace("{Title on Spine}", metaTable.cell(4, 3).text)	
-	metaText = metaText.replace("{Margin Title}", metaTable.cell(5, 3).text)	
-	metaText = metaText.replace("{Author of Text}", metaTable.cell(6, 3).text)	
-	metaText = metaText.replace("{Name of Collection}", metaTable.cell(7, 3).text)	
-	#PUBLISHING
-	metaText = metaText.replace("{Publisher Name}", metaTable.cell(9, 3).text)	
-	metaText = metaText.replace("{Publisher Place}", metaTable.cell(10, 3).text)	
-	metaText = metaText.replace("{Publisher Date}", metaTable.cell(11, 3).text)	
-	#IDs
-	metaText = metaText.replace("{ISBN}", metaTable.cell(13, 3).text)	
-	metaText = metaText.replace("{Library Call-number}", metaTable.cell(14, 3).text)	
-	metaText = metaText.replace("{Other ID number}", metaTable.cell(15, 3).text)	
-	metaText = metaText.replace("{Volume Letter}", metaTable.cell(16, 3).text)	
-	metaText = metaText.replace("{Volume Number}", metaTable.cell(17, 3).text)	
-	metaText = metaText.replace("{Pagination of Text}", metaTable.cell(18, 3).text)	
-	metaText = metaText.replace("{Pages Represented in this file}", metaTable.cell(19, 3).text)	
-	#CREATION
-	metaText = metaText.replace("{Name of Agent Creating Etext}", metaTable.cell(21, 3).text)	
-	metaText = metaText.replace("{Date Process Begun}", metaTable.cell(22, 3).text)	
-	metaText = metaText.replace("{Date Process Finished}", metaTable.cell(23, 3).text)	
-	metaText = metaText.replace("{Place of Process}", metaTable.cell(24, 3).text)	
-	metaText = metaText.replace("{Method of Process (OCR, input)}", metaTable.cell(25, 3).text)	
-	#PROOFING
-	metaText = metaText.replace("{Name of Proofreader}", metaTable.cell(27, 3).text)	
-	metaText = metaText.replace("{Date Proof Began}", metaTable.cell(28, 3).text)	
-	metaText = metaText.replace("{Date Proof Finished}", metaTable.cell(29, 3).text)	
-	metaText = metaText.replace("{Place of Proof}", metaTable.cell(30, 3).text)	
-	#MARKUP
-	metaText = metaText.replace("{Name of Markup-er}", metaTable.cell(32, 3).text)	
-	metaText = metaText.replace("{Date Markup Began}", metaTable.cell(33, 3).text)	
-	metaText = metaText.replace("{Date Markup Finished}", metaTable.cell(34, 3).text)	
-	metaText = metaText.replace("{Place of Markup}", metaTable.cell(35, 3).text)	
-	#CONVERSION
-	metaText = metaText.replace("{Name of Converter}", metaTable.cell(37, 3).text)	
-	metaText = metaText.replace("{Date Conversion Began}", metaTable.cell(38, 3).text)	
-	metaText = metaText.replace("{Date Conversion Finished}", metaTable.cell(39, 3).text)	
-	metaText = metaText.replace("{Place of Conversion}", metaTable.cell(40, 3).text)	
-	#PROBLEMS
-	metaText = metaText.replace("{Problem Cell 1}", metaTable.cell(42, 1).text)	
-	metaText = metaText.replace("{Problem Cell 2}", metaTable.cell(42, 3).text)	
+	for metaField in metaRows:
+		try:
+			metaText = metaText.replace(metaField[0], metaTable.cell(metaField[1], metaField[2]).text)
+		except IndexError:
+			label = metaField[0].replace('{','“').replace('}','”')
+			print "Cannot locate metadata table cell for {0} ({1}, {2})".format(label, metaField[1], metaField[2])
+
 	#DATE
 	metaText = metaText.replace("{Digital Creation Date}", str(date.today()))	
 
@@ -273,7 +281,14 @@ def doHeaders(par, lastElement, root):
 			else:
 				#pop out as many levels as necessry
 				while headingNum != global_header_level:
-					lastElement = lastElement.getparent()
+					if lastElement is None:
+						print "\tNo last element when trying to close parent header levels {0}".format(global_header_level)
+						lastElement = getNewLastElement()
+					else:
+						leparent = lastElement.getparent()
+						if leparent is not None:
+							lastElement = lastElement.getparent()
+
 					lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 					idTracker.pop()
 					global_header_level -= 1
@@ -293,7 +308,14 @@ def doHeaders(par, lastElement, root):
 				for i in range(1,global_header_level):
 					curID += "." + str(idTracker[i])
 
-				lastElement = lastElement.getparent()
+				if lastElement is None:
+					print "\tNo last element when trying to close level {0}".format(global_header_level)
+					lastElement = getNewLastElement()
+				else:
+					leparent = lastElement.getparent()
+					if leparent is not None:
+						lastElement = leparent
+
 				lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
 
 				#create div on current (or newly popped) level
@@ -474,7 +496,7 @@ def doParaStyles(par, prevSty, lastElement):
 		elif "Citation Verse 1" == styName or "Verse Citation 1" == styName:
 			lg = etree.SubElement(lastElement,"lg")
 			l = etree.SubElement(lg,"l")
-			iterateRange(par, l) 
+			iterateRange(par, l)
 			lgOpen = True
 			return lg
 
@@ -1112,8 +1134,16 @@ def getElement(chStyle, lastElement):
 
 	return elem
 
+def getNewLastElement(elname="p"):
+	nle = etree.Element(elname)
+	root.find('text').append(nle)
+	return nle
+
 def convertDoc(inputFile):
-	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage
+	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, \
+		frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage, \
+		root
+
 	# reset global variables
 	tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
 	bodyOpen = backOpen = frontOpen = False
@@ -1161,10 +1191,15 @@ def convertDoc(inputFile):
 			print "\t\t Paragraph text: " + par.text
 		prevSty = par.style.name
 
+		if lastElement is None:
+			print "\t No last element after processing paragraph: "
+			print "\t\t Text: " + par.text
+			lastElement = getNewLastElement()
+
 	closingComments(lastElement)
 
 	# create XML file
-	name = inputFile.split("/")[-1].split(".")[0] + '.xml'
+	name = './docs/converted/' + inputFile.split("/")[-1].split(".")[0] + '.xml'
 	file = open(name, "wb")
 	docType = "<!DOCTYPE TEI.2 SYSTEM \"http://www.thlib.org:8080/cocoon/texts/catalogs/xtib3.dtd\">"
 	toString = etree.tostring(root, encoding='UTF-8', xml_declaration=True, doctype=docType, pretty_print=True)
