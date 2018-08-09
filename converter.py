@@ -1143,7 +1143,7 @@ def getNewLastElement(elname="p"):
 	root.find('text').append(nle)
 	return nle
 
-def convertDoc(inputFile):
+def convertDoc(inputFile, outpath):
 	global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, \
 		frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage, \
 		root
@@ -1202,9 +1202,9 @@ def convertDoc(inputFile):
 
 	closingComments(lastElement)
 
-	# create XML file
-	name = './docs/converted/' + inputFile.split("/")[-1].split(".")[0] + '.xml'
-	file = open(name, "wb")
+	fname = inputFile.split("/")[-1].split(".")[0] + '.xml'
+	fpth = os.path.join(outpath, fname)
+	file = open(fpth, "wb")
 	docType = "<!DOCTYPE TEI.2 SYSTEM \"http://www.thlib.org:8080/cocoon/texts/catalogs/xtib3.dtd\">"
 	toString = etree.tostring(root, encoding='UTF-8', xml_declaration=True, doctype=docType, pretty_print=True)
 	file.write(toString);
@@ -1213,37 +1213,71 @@ def convertDoc(inputFile):
 
 
 ########## MAIN ##########
+def main():
+    if len(sys.argv) == 0:
+        print "\t Argument Error: please include one or more docx files as command line arguments or the name of a folder that contains the files"
+        sys.exit(0)
 
-if len(sys.argv)==0:
-	print "\t Argument Error: please include one or more docx files as command line arguments or the name of a folder that contains the files"
-	sys.exit(0)
+    firstArg = sys.argv[1]
+    if "help" in firstArg and '/' not in firstArg and '/' not in firstArg:
+        print "converter.py - a python script to convert THL word docs into XML markup"
+        print "\tUsage:"
+        print "\t\t python converter.py -o {output folder} {source (source) (source)}"
+        print ""
+        print "\tsource: can be either a directory of docs to convert or a list of one or more .docx files"
+        print "\t-o (optional parameter) provide a folder path into which to write or “output” the resulting XML files"
+        print "\t\t(Paths can be relative to the script)"
+        print ""
+        exit(0)
 
-initialPath = os.path.join(os.getcwd(), sys.argv[1])
+    docs = []
+    inpath = False
+    outpath = os.path.join(os.getcwd(), '../out/')
+    getOutPath = False
+    for item in sys.argv[1:]:
+        if getOutPath:
+            outpath = os.path.join(os.getcwd(), item)
+            getOutPath = False
+        elif item == '-o':
+            getOutPath = True
+        elif item.endswith(".docx"):
+            docs.append(item)
+        else:
+            fullpath = os.path.join(os.getcwd(), item)
+            if os.path.isdir(fullpath):
+                inpath = fullpath
+            else:
+                "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
 
-# user inputs folder with document(s)
-if os.path.isdir(initialPath):
-	for item in os.listdir(initialPath):
-		currentPath = os.path.join(initialPath, item)
-		if item.endswith(".docx") and os.path.isfile(currentPath):
-			print "Converting " + item + " to XML..."
-			convertDoc(currentPath)
-			print "Conversion successful!"
-		# print warning for non-docx files
-		else:
-			print "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
-# user inputs docx file(s) directly
-else:
-	for item in sys.argv[1:]:
-		currentPath = os.path.join(os.getcwd(), item)
-		if item.endswith(".docx") and os.path.isfile(currentPath):
-			print "Converting " + item + " to XML..."
-			convertDoc(currentPath)
-			print "Conversion successful!"
-		# print warning for non-docx files
-		else:
-			print "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
+    if inpath:
+        status = "is" if os.path.isdir(inpath) else "is not"
+        print "Converting all .docx in the path: {0}  (It {1} a directory)".format(inpath, status)
+    elif len(docs) > 0:
+        print "Converting the following docs: {0}".format(', '.join(docs))
+    else:
+        print "\tWarnging (INCORRECT ARGUMENTS): Neither docs not inpath given"
+        exit(0)
+
+    status = "is" if os.path.isdir(outpath) else "is not"
+    print "Outpath for the converted xml is: {0} (It {1} a directory)".format(outpath, status)
+
+    # Process all .docx files in inpath
+    if inpath:
+        for item in os.listdir(inpath):
+            currentPath = os.path.join(inpath, item)
+            if item.endswith(".docx") and os.path.isfile(currentPath):
+                print "Converting " + item + " to XML..."
+                convertDoc(currentPath, outpath)
+                print "Conversion successful!"
+
+    # Process list of files given as parameters
+    else:
+        for item in docs:
+            currentPath = os.path.join(os.getcwd(), item)
+            if item.endswith(".docx") and os.path.isfile(currentPath):
+                print "Converting " + item + " to XML..."
+                convertDoc(currentPath, outpath)
+                print "Conversion successful!"
 
 
-
-
-
+main()
