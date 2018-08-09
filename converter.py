@@ -857,8 +857,12 @@ def iterateNote(run, lastElement, styName):
 				if len(temp)>0:
 					elem = etree.SubElement(lastElement,"milestone")
 					elem.set("unit","line")
-					elem.set("n",temp)
-
+					if "-" in temp:
+						temp = temp.split("-")
+						elem.set("n", temp[1])
+						elem.set("ed", temp[0])
+					else:
+						elem.set("n", temp)
 
 			elif charStyle == "Illegible":
 				elem = etree.SubElement(lastElement,"gap")
