@@ -113,6 +113,7 @@
 				<language id="mon">Mongolian</language>
 				<language id="nxq">Naxi</language>
 				<language id="nep">Nepali</language>
+				<language id="non-tib">Non-Tibetan Language</language>
 				<language id="pli">Pali</language>
 				<language id="pan">Panjabi</language>
 				<language id="per">Persian</language>
@@ -132,5 +133,3 @@
 		</profileDesc>
 	</teiHeader>
 	<text>
-	</text>
-<TEI.2>
