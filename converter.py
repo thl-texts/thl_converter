@@ -25,7 +25,11 @@ root = None
 ########## FUNCTIONS ##########
 
 def doFootEndnotes(inputFile):
+    """
+    Parses Word XML footnotes and endnotes into global lists to be referenced during conversion
+    """
     global footnotes, endnotes
+
     # note:	the global footnote and endnote lists are 0 indexed (e.g. footnotes[0] is the footnote #1)
 
     document = zipfile.ZipFile(inputFile)
@@ -438,6 +442,8 @@ def closeStyle(styName, lastElement):
 
 
 def doParaStyles(par, prevSty, lastElement):
+    # The main function called for paragraphs that are not headers
+    # Sets the xml element to use and then calls iterate range
     global listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, global_list_level
 
     styName = par.style.name
@@ -794,6 +800,7 @@ def interateRuns(par, lastElement):
                     if "footnote" in charStyle or "Footnote" in charStyle:
                         elem.text = footnotes[footnoteNum - 1]
                     elif "endnote" in charStyle or "Endnote" in charStyle:
+                        print "endnote"
                         elem.text = endnotes[endnoteNum - 1]
                     else:
                         elem.text = run.text
@@ -801,12 +808,11 @@ def interateRuns(par, lastElement):
 
 def iterateRange(par, lastElement):
     '''
-    Original function from Ori to go through the range of characters in a paragraph
-    Necessary because similar ranges were not concantenated.
-    Trying to replace with interateRuns
+    Iterates through the range of a paragrah. This has been updated to deal
     '''
     global footenotes, endnotes
 
+    grandParent = lastElement   # record initial last element to return to
     # styName is the current paragraph style
     styName = par.style.name
     runs = par.runs
@@ -817,20 +823,21 @@ def iterateRange(par, lastElement):
         return
 
     # prevCharStyle is the most recent character style used. It is initialized to the current paragraph style.
-    prevCharStyle = styName
+    # prevCharStyle = styName  # This is not necessary since runs of the same charStyle have been concatenated
+    elem = None
 
     # iterate through runs in current paragraph (all consquetive runs of the same style must be concatenated)
     for run in runs:
         # charStyle is the current character style.
         charStyle = run.style.name
 
-        # place entire run in weak emphasis tag if italics
-        # if run.italic:
-        #	lastElement = etree.SubElement(lastElement,"hi")
-        #	lastElement.set("rend","weak")
+        # if the character style is Default Paragraph
+        if charStyle == "Default Paragraph Font":
+            # If not currently in it, return to the grandparent (initial last element) as last Element
+            if lastElement != grandParent:
+                 elem = lastElement
+                 lastElement = grandParent
 
-        # if character style of current run is same as current paragraph style
-        if charStyle == styName or charStyle == "Default Paragraph Font":
             try:
                 try:
                     elem.tail += run.text
@@ -846,9 +853,8 @@ def iterateRange(par, lastElement):
             xref = etree.SubElement(lastElement, "xref")  # check if this prints hyperlink
             xref.set("n", run.text)
 
-        else:
-            # Page Number Print / Page Number or Line Numbers
-            if "Page Number" in charStyle or "PageNumber" == charStyle or \
+        # Page Number Print / Page Number or Line Numbers
+        elif "Page Number" in charStyle or "PageNumber" == charStyle or \
                     "Line Number" in charStyle or "TibLineNumber" == charStyle:
                 msstrs = re.findall(r'\[[^\]]+\]', run.text)
 
@@ -864,130 +870,198 @@ def iterateRange(par, lastElement):
                         if "Line Number" == charStyle:
                             elem.set("rend", "digital")
 
-            elif charStyle == "Illegible":
-                elem = etree.SubElement(lastElement, "gap")
-                elem.set("n", run.text.split("[")[1].split("]")[0])
-                elem.set("reason", "illegible")
+        elif charStyle == "Illegible":
+            elem = etree.SubElement(lastElement, "gap")
+            elem.set("n", run.text.split("[")[1].split("]")[0])
+            elem.set("reason", "illegible")
 
-            # new character style or no character style
-            else:
-                elem = getElement(charStyle, lastElement)
-                if elem == "none type":
+        # Do Footnotes
+        elif "footnote" in charStyle or "Footnote" in charStyle:
+            #if type(lastElement) is etree._Element:
+                #print u"last element: {0}, content : {1}, tail: {2}".format(lastElement.tag, lastElement.text, lastElement.tail)
+            # if type(elem) is etree._Element:
+            #     if type(elem.tail) is unicode and elem.tail[-1] == u'}':
+            #         print u"Elem Var with critical: {1} | {0}".format(footnotes[footnoteNum - 1], elem.tail)
+
+            elem = getElement(charStyle, lastElement)
+            elem.text = footnotes[footnoteNum - 1]
+
+        # Do Endnotes
+        elif "endnote" in charStyle or "Endnote" in charStyle:
+            elem = getElement(charStyle, lastElement)
+            elem.text = endnotes[endnoteNum - 1]
+
+        # Deal with tags that can contain other elements
+        # If the nex charStyle matches the last recorded Element and there has been a child element
+        # Then append this run to the tail of the child element
+        elif matchesLastElement(charStyle, lastElement) and elem is not None:
+            try:
+                elem.tail += run.text
+            except TypeError:
+                elem.tail = run.text
+
+        # Otherwise call the getElement function to determine the element name based on charstyle and last element
+        else:
+            newel = getElement(charStyle, lastElement)
+            if newel != 'none type':
+                lastElement = newel             # Set this as last element so it contains any next elements until Default Paragraph Style is found
+                lastElement.text = run.text
+                elem = None
+            else:                               # if char style returns nonetype then append to current elem tail or if not, then lastElem text
+                if elem is not None:
+                    try:
+                        elem.tail += run.text
+                    except TypeError:
+                        elem.tail = run.text
+                else:
                     try:
                         lastElement.text += run.text
                     except TypeError:
                         lastElement.text = run.text
-                else:
-                    if "footnote" in charStyle or "Footnote" in charStyle:
-                        elem.text = footnotes[footnoteNum - 1]
-                    elif "endnote" in charStyle or "Endnote" in charStyle:
-                        elem.text = endnotes[endnoteNum - 1]
-                    else:
-                        elem.text = run.text
+
+            # ORiginal code
+            # elem = getElement(charStyle, lastElement)
+            # if elem == "none type":
+            #     try:
+            #         lastElement.text += run.text
+            #     except TypeError:
+            #         lastElement.text = run.text
+            #
+            # else:
+            #     elem.text = run.text
+
+
+def matchesLastElement(charStyle, lastel):
+    '''
+    Check to see if the current new tag is exactly the same as the last parent to determine how to deal with text
+
+    :param charStyle:
+    :return:
+    '''
+    # Get test element based on charstyle
+    fauxparent = etree.fromstring('<faux></faux>') # a fake parent to call get element with
+    testel = getElement(charStyle, fauxparent, False)
+
+    # Check if tag is the same as last el
+    if testel != "none type" and testel.tag == lastel.tag:
+        # Go through test el's attributes and match to last ele
+        for att in testel.attrib:
+            if testel.get(att) != lastel.get(att):
+                return False
+
+        # Go through last el's attributes and match with test el
+        for att in lastel.attrib:
+            if lastel.get(att) != testel.get(att):
+                return False
+    else:
+        return False
+
+    return True  # if it makes it here they are identical
 
 
 # implement fully
-def iterateNote(run, lastElement, styName):
-    # lastElement.text = run.text
-    # FIX/TEST THIS
-    prevCharStyle = styName
-
-    # iterate through characters in the footnote
-    for char in run.text:
-        charStyle = char.style.name
-        # char style is same as paragraph style
-        if charStyle == styName or charStyle == "Default Paragraph Font":
-            try:
-                try:
-                    elem.tail += char
-                except TypeError:
-                    elem.tail = char
-            except (UnboundLocalError, AttributeError):
-                try:
-                    lastElement.text += char
-                except TypeError:
-                    lastElement.text = char
-            prevCharStyle = styName
-
-        elif charStyle == "Hyperlink":
-            xref = etree.SubElement(lastElement, "xref")  # check if this prints hyperlink
-            xref.set("n", char)
-            # handle displaying link text next to tag
-            prevCharStyle = charStyle
-        else:
-            # continue with same character style
-            if charStyle == prevCharStyle:
-                try:
-                    elem.text += char
-                except TypeError:
-                    elem.text = char
-
-            # Page Number,digital
-            if "Page Number" == charStyle:
-                elem = etree.SubElement(lastElement, "milestone")
-                elem.set("unit", "page")
-                temp = char
-                if char[0] == "[":
-                    temp = temp[1:]
-                if char[-1] == "]":
-                    temp = temp[:-1]
-                elem.set("n", temp)
-                elem.set("rend", "digital")
-
-            # Line Number,digital
-            elif "Line Number" == charStyle:
-                elem = etree.SubElement(lastElement, "milestone")
-                elem.set("unit", "line")
-                temp = char
-                if char[0] == "[":
-                    temp = temp[1:]
-                if char[-1] == "]":
-                    temp = temp[:-1]
-                elem.set("n", temp)
-                elem.set("rend", "digital")
-
-            # Page Number Number Print Edition,pnp"
-            elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
-                temp = run.text.replace("page", "").replace("[", "").replace("]", "").strip()
-                if len(temp) > 0:
-                    elem = etree.SubElement(lastElement, "milestone")
-                    elem.set("unit", "page")
-                    if "-" in temp:
-                        temp = temp.split("-")
-                        elem.set("n", temp[1])
-                        elem.set("ed", temp[0])
-                    else:
-                        elem.set("n", temp)
-
-            # Line Number Print,lnp
-            elif "Line Number Print" in charStyle or "TibLineNumber" == charStyle:
-                temp = run.text.replace("line", "").replace("[", "").replace("]", "").strip()
-                if len(temp) > 0:
-                    elem = etree.SubElement(lastElement, "milestone")
-                    elem.set("unit", "line")
-                    if "-" in temp:
-                        temp = temp.split("-")
-                        elem.set("n", temp[1])
-                        elem.set("ed", temp[0])
-                    else:
-                        elem.set("n", temp)
-
-            elif charStyle == "Illegible":
-                elem = etree.SubElement(lastElement, "gap")
-                elem.set("n", run.text.split("[")[1].split("]")[0])
-                elem.set("reason", "illegible")
-
-            # set new character style
-            else:
-                elem = getElement(charStyle, lastElement)
-                if elem == "none type":
-                    try:
-                        lastElement.text += char
-                    except TypeError:
-                        lastElement.text = char
-                else:
-                    elem.text = char
-            prevCharStyle = charStyle
+#  This is not called (ndg, 2018-08-20)
+# def iterateNote(run, lastElement, styName):
+#     # lastElement.text = run.text
+#     # FIX/TEST THIS
+#     prevCharStyle = styName
+#
+#     # iterate through characters in the footnote
+#     for char in run.text:
+#         charStyle = char.style.name
+#         # char style is same as paragraph style
+#         if charStyle == styName or charStyle == "Default Paragraph Font":
+#             try:
+#                 try:
+#                     elem.tail += char
+#                 except TypeError:
+#                     elem.tail = char
+#             except (UnboundLocalError, AttributeError):
+#                 try:
+#                     lastElement.text += char
+#                 except TypeError:
+#                     lastElement.text = char
+#             prevCharStyle = styName
+#
+#         elif charStyle == "Hyperlink":
+#             xref = etree.SubElement(lastElement, "xref")  # check if this prints hyperlink
+#             xref.set("n", char)
+#             # handle displaying link text next to tag
+#             prevCharStyle = charStyle
+#         else:
+#             # continue with same character style
+#             if charStyle == prevCharStyle:
+#                 try:
+#                     elem.text += char
+#                 except TypeError:
+#                     elem.text = char
+#
+#             # Page Number,digital
+#             if "Page Number" == charStyle:
+#                 elem = etree.SubElement(lastElement, "milestone")
+#                 elem.set("unit", "page")
+#                 temp = char
+#                 if char[0] == "[":
+#                     temp = temp[1:]
+#                 if char[-1] == "]":
+#                     temp = temp[:-1]
+#                 elem.set("n", temp)
+#                 elem.set("rend", "digital")
+#
+#             # Line Number,digital
+#             elif "Line Number" == charStyle:
+#                 elem = etree.SubElement(lastElement, "milestone")
+#                 elem.set("unit", "line")
+#                 temp = char
+#                 if char[0] == "[":
+#                     temp = temp[1:]
+#                 if char[-1] == "]":
+#                     temp = temp[:-1]
+#                 elem.set("n", temp)
+#                 elem.set("rend", "digital")
+#
+#             # Page Number Number Print Edition,pnp"
+#             elif "Page Number Print" in charStyle or "PageNumber" == charStyle:
+#                 temp = run.text.replace("page", "").replace("[", "").replace("]", "").strip()
+#                 if len(temp) > 0:
+#                     elem = etree.SubElement(lastElement, "milestone")
+#                     elem.set("unit", "page")
+#                     if "-" in temp:
+#                         temp = temp.split("-")
+#                         elem.set("n", temp[1])
+#                         elem.set("ed", temp[0])
+#                     else:
+#                         elem.set("n", temp)
+#
+#             # Line Number Print,lnp
+#             elif "Line Number Print" in charStyle or "TibLineNumber" == charStyle:
+#                 temp = run.text.replace("line", "").replace("[", "").replace("]", "").strip()
+#                 if len(temp) > 0:
+#                     elem = etree.SubElement(lastElement, "milestone")
+#                     elem.set("unit", "line")
+#                     if "-" in temp:
+#                         temp = temp.split("-")
+#                         elem.set("n", temp[1])
+#                         elem.set("ed", temp[0])
+#                     else:
+#                         elem.set("n", temp)
+#
+#             elif charStyle == "Illegible":
+#                 elem = etree.SubElement(lastElement, "gap")
+#                 elem.set("n", run.text.split("[")[1].split("]")[0])
+#                 elem.set("reason", "illegible")
+#
+#             # set new character style
+#             else:
+#                 elem = getElement(charStyle, lastElement)
+#                 if elem == "none type":
+#                     try:
+#                         lastElement.text += char
+#                     except TypeError:
+#                         lastElement.text = char
+#                 else:
+#                     elem.text = char
+#             prevCharStyle = charStyle
 
 
 def parseMilestoneText(msstr):
@@ -1002,7 +1076,7 @@ def parseMilestoneText(msstr):
                 "ed" => edition sigla, e.g. "Ab1", "Tr", or False
     '''
     data = {}
-    msstr = msstr.replace('[').replace(']')
+    msstr = msstr.replace('[', '').replace(']', '')
     # If the milestone string has a space the unit type is first
     if " " in msstr:
         pts = msstr.split(' ')
@@ -1027,7 +1101,7 @@ def parseMilestoneText(msstr):
 
 
 
-def getElement(chStyle, lastElement):
+def getElement(chStyle, lastElement, warn=True):
     global footnoteNum, endnoteNum
 
     if chStyle == "Added by Editor":
@@ -1147,17 +1221,17 @@ def getElement(chStyle, lastElement):
 
     elif chStyle == "X-Name Personal Human" or chStyle == "Name Personal Human":
         elem = etree.SubElement(lastElement, "persName")
-        elem.set("n", "personal_human")
+        elem.set("type", "human")
 
     elif chStyle == "X-Name Personal Other":
         elem = etree.SubElement(lastElement, "persName")
-        elem.set("n", "personal_other")
+        elem.set("type", "other")
 
     elif chStyle == "X-Name Place" or chStyle == "Name Place":
         elem = etree.SubElement(lastElement, "placeName")
         elem.set("n", "place")
 
-    elif chStyle == "X-Religious Practice" or chStyle == "Name Ritual" or chStyle == "Name Religious Practice" or chStyle == "Religious Practice":
+    elif chStyle == "X-Religious Practice" or chStyle.lower == "name ritual" or chStyle == "Name Religious Practice" or chStyle == "Religious Practice":
         elem = etree.SubElement(lastElement, "term")
         elem.set("n", "religious_practice")
 
@@ -1278,7 +1352,8 @@ def getElement(chStyle, lastElement):
         elem.set("n", str(endnoteNum))
 
     else:
-        print "\t Warning (Character Style): " + chStyle + " is not supported"
+        if warn is True:
+            print "\t Warning (Character Style): " + chStyle + " is not supported"
         return "none type"
 
     return elem
@@ -1291,6 +1366,12 @@ def getNewLastElement(elname="p"):
 
 
 def mergeRuns(doc):
+    '''
+    Take a document and go through all runs in all paragraphs, if two consecutive runs have the same style, then merge them
+
+    :param doc:
+    :return:
+    '''
     for para in doc.paragraphs:
         runs2remove = []
         lastrun = False
@@ -1323,7 +1404,7 @@ def convertDoc(inputFile, outpath):
     idTracker = []
     titlePage = None
 
-    # process foot/endnotes
+    # process foot/endnotes into lists
     doFootEndnotes(inputFile)
 
     # read input file
@@ -1335,6 +1416,7 @@ def convertDoc(inputFile, outpath):
     except:
         print "\t Error: metatable not included"
         sys.exit(1)
+
     metaText = doMetadata(metaTable)
 
     # create lxml element tree from metadata info
@@ -1348,14 +1430,18 @@ def convertDoc(inputFile, outpath):
     prevSty = ''
     mergeRuns(document) # Merge consequetive runs of the same style, so each run represents a new style
     for par in document.paragraphs:
+        # Do the Headers
         if "Heading" in par.style.name:
             # inDocument avoids including any paragraphs before the first structural heading
             inDocument = True
             lastElement = doHeaders(par, lastElement, root)
+        # Set in Heading. See above
         elif inDocument:
             lastElement = doParaStyles(par, prevSty, lastElement)
+        # Do the Title of the Word Doc
         elif "Title" == par.style.name:
             doTitle(par, lastElement)
+        # Top level paragraph that is not Front, Body, or Back (Heading) is wrong. So warn
         else:
             print "\t Warning (IMPROPER HEADER NESTING): All paragraphs other than Title must be inside Front, Body, or Back"
             print "\t\t Paragraph text: " + par.text
@@ -1383,7 +1469,7 @@ def main():
         print "\t Argument Error: please include one or more docx files as command line arguments or the name of a folder that contains the files"
         sys.exit(0)
 
-    firstArg = sys.argv[1]
+    firstArg = 'help' if len(sys.argv) < 2 else sys.argv[1]
     if "help" in firstArg and '/' not in firstArg and '/' not in firstArg:
         print "converter.py - a python script to convert THL word docs into XML markup"
         print "\tUsage:"
