@@ -831,6 +831,9 @@ def iterateRange(par, lastElement):
         # charStyle is the current character style.
         charStyle = run.style.name
 
+        if "name personal" in charStyle.lower():
+            print charStyle
+
         # if the character style is Default Paragraph
         if charStyle == "Default Paragraph Font":
             # If not currently in it, return to the grandparent (initial last element) as last Element
@@ -895,6 +898,18 @@ def iterateRange(par, lastElement):
         # If the nex charStyle matches the last recorded Element and there has been a child element
         # Then append this run to the tail of the child element
         elif matchesLastElement(charStyle, lastElement) and elem is not None:
+            if charStyle == "Name Personal Human":
+                print "IT matches!"
+
+            try:
+                elem.tail += run.text
+            except TypeError:
+                elem.tail = run.text
+
+        # If the new charstyle matches the parent of the last element, go up to it and add run as tail of last element
+        elif matchesLastElement(charStyle, lastElement.getparent()):
+            elem = lastElement
+            lastElement = lastElement.getparent()
             try:
                 elem.tail += run.text
             except TypeError:
@@ -902,6 +917,9 @@ def iterateRange(par, lastElement):
 
         # Otherwise call the getElement function to determine the element name based on charstyle and last element
         else:
+            # if charStyle == "Name Personal Human" or charStyle == "Sa bcad":
+            #     print charStyle, etree.tostring(lastElement)
+
             newel = getElement(charStyle, lastElement)
             if newel != 'none type':
                 lastElement = newel             # Set this as last element so it contains any next elements until Default Paragraph Style is found
