@@ -885,6 +885,19 @@ def iterateRange(par, lastElement):
             # if type(elem) is etree._Element:
             #     if type(elem.tail) is unicode and elem.tail[-1] == u'}':
             #         print u"Elem Var with critical: {1} | {0}".format(footnotes[footnoteNum - 1], elem.tail)
+            if elem is not None and isinstance(elem.tail, (str, unicode)) and elem.tail[-1] == '}':
+                tailtext = elem.tail
+                openb = tailtext.rfind('{')
+                crittxt = tailtext[openb + 1:-1]
+                elem.tail = tailtext[:openb]
+                critel = getCriticalElement(crittxt)
+
+            elif lastElement is not None and isinstance(lastElement.text, (str, unicode)) and lastElement.text[-1] == '}':
+                endtext = lastElement.text
+                openb = endtext.rfind('{')
+                crittxt = endtext[openb + 1:-1]
+                lastElement.text = endtext[:openb]
+                critel = getCriticalElement(crittxt)
 
             elem = getElement(charStyle, lastElement)
             elem.text = footnotes[footnoteNum - 1]
@@ -975,6 +988,10 @@ def matchesLastElement(charStyle, lastel):
         return False
 
     return True  # if it makes it here they are identical
+
+
+def getCriticalElement(crittxt):
+    print u"Figure out getCritical element function: {0}".format(crittxt)
 
 
 # implement fully
