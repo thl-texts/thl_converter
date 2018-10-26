@@ -990,8 +990,20 @@ def matchesLastElement(charStyle, lastel):
     return True  # if it makes it here they are identical
 
 
+
 def getCriticalElement(crittxt):
+    '''
+    Creates the markup for a different reading in a critical edition of a text based on {} and footnotes.
+
+    :param crittxt:
+    :return:
+    '''
+
+    # TODO This needs to be implemented!
+
     print u"Figure out getCritical element function: {0}".format(crittxt)
+    markup = "<!--who knows?-->"
+    return markup
 
 
 # implement fully
@@ -1139,6 +1151,9 @@ def parseMilestoneText(msstr):
 def getElement(chStyle, lastElement, warn=True):
     global footnoteNum, endnoteNum
 
+    # TODO Use the styleElements.py script to get definition of element based on style
+
+    # TODO Check the list below versus sytleElements.py to make sure all chStyles have been accounted for
     if chStyle == "Added by Editor":
         elem = etree.SubElement(lastElement, "add")
         elem.set("n", "editor")
@@ -1375,7 +1390,8 @@ def getElement(chStyle, lastElement, warn=True):
     elif chStyle == "Document Map":
         # no warning
         return "none type"
-
+    
+    # Detect Footnote or Endnote Reference number and place the markedup note at that point in the text
     elif "Footnote" in chStyle or "footnote" in chStyle:
         footnoteNum += 1
         elem = etree.SubElement(lastElement, "note")
