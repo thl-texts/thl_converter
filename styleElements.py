@@ -4,153 +4,132 @@
 ########## Python Library to Convert Style Names to Elements ##########
 
 from lxml import etree
+import json
 
 ##### Global Element Dictionary ######
 
-# Elkeys matches style name to dictionary keys. This allows multiple style names to use the same element markup
+# "keydict" is a dictionary of keys string matched with arrays of word style names
+# The keys are the same keys in the element dictionary
+# The values are an array of word styles names that should use that key to look up their element stats
+# The function "createStyleKeyDict" creates a flat dictionary with keys of Word Style names matched with the "keys"
+# used to look up the xml element specs (tagname and attributes)
 keydict = {
-    "Added by Editor" : "add-by-ed",
-    "Annotations" : "annotations",
-    "Colophon Chapter Title" : "title-chap",
-    "Colophon Text Titlle" : "title-own-tib",
-    "Date" : "date",
-    "Date Range" : "date-range",
-    "Dates" : "date-range",
-    "Doxographical-Bibliographical Category" : "dox-cat",
-    "Emphasis Strong" : "emph-strong",
-    "Emphasis Weak" : "emph-weak",
-    "Endnote Characters" : "endn-char",
-    "Endnote Text Char" : "endn-text-char",
-    "Epithet" : "epithet",
-    "Epithet Buddhist Deity" : "epit-budd-deit",
-    "FollowedHyperlink" : "followedhyperlink",
-    "Footnote Bibliography" : "foot-bibl",
-    "Footnote Characters" : "foot-char",
-    "Hyperlink" : "hyperlink",
-    "Illegible" : "illegible",
-    "Lang Chinese" : "lang-chi",
-    "Lang English" : "lang-eng",
-    "Lang French" : "lang-fre",
-    "Lang German" : "lang-ger",
-    "Lang Japanese" : "lang-jap",
-    "Lang Korean" : "lang-kor",
-    "Lang Mongolian" : "lang-mon",
-    "Lang Nepali" : "lang-nep",
-    "Lang Pali" : "lang-pali",
-    "Lang Sanskrit" : "lang-sans",
-    "Lang Spanish" : "lang-span",
-    "Lang Tibetan" : "lang-tib",
-    "Line Number Print" : "line-num-print",
-    "Line Number Tib" : "line-num-tib",
-    "LineNumber" : "line-num",
-    "Monuments" : "monuments",
-    "Name Buddhist  Deity" : "name-budd-deity",
-    "Name Buddhist Deity Collective" : "name-budd-deity-coll",
-    "Name Personal Human" : "name-pers-human",
-    "Name Personal other" : "name-pers-other",
-    "Name Place" : "name-place",
-    "Name festival" : "name-fest",
-    "Name generic" : "name-gen",
-    "Name of ethnicity" : "name-ethnic",
-    "Name org clan" : "name-org-clan",
-    "Name org lineage" : "name-org-line",
-    "Name organization" : "name-org",
-    "Name organization monastery" : "name-org-monastery",
-    "Name ritual" : "name-ritual",
-    "Page Number Print Edition" : "page-num-print-ed",
-    "PageNumber" : "page-num",
-    "Pages" : "pages",
-    "Placeholder Text1" : "placeholder-text",
-    "Plain Text" : "plain-text",
-    "Religious practice" : "rel-pract",
-    "Root Text" : "root-text",
-    "Root text" : "root-text",
-    "Sa bcad" : "sa-bcad",
-    "Speaker Buddhist Deity Collective" : "speak-budd-deity-coll",
-    "Speaker Epithet Buddhist Deity" : "speak-epit-budd-deity",
-    "Speaker generic" : "speal-gene",
-    "SpeakerBuddhistDeity" : "speak-budd-deity",
-    "SpeakerHuman" : "speak-human",
-    "SpeakerOther" : "speak-other",
-    "Speech Inline" : "speech-inline",
-    "Strong" : "emph-strong",
-    "Subtle Emphasis1" : "emph-weak",
-    "Text Title" : "text-title",
-    "Text Title Sanksrit" : "text-title-san",
-    "Text Title Tibetan" : "text-title-tib",
-    "Text Title in Chapter Colophon" : "text-title-chap-colon",
-    "Text Title in Colophon" : "text-title-colon",
-    "TextGroup" : "text-group",
-    "TibLineNumber" : "tib-line-number",
-    "Title" : "title",
-    "Title (Own) Non-Tibetan Language" : "title-own-non-tib",
-    "Title (Own) Tibetan" : "title-own-tib",
-    "Title in Citing Other Texts" : "title-cite-other",
-    "Title of Chapter" : "title-chap",
-    "Unclear" : "unclear",
-    "X-Author Generic" : "auth-gen",
-    "X-Author Indian" : "auth-ind",
-    "X-Author Tibetan" : "auth-tib",
-    "X-Dates" : "dates",
-    "X-Doxo-Biblio Category" : "dox-cat",
-    "X-Emphasis Strong" : "emph-strong",
-    "X-Emphasis Weak" : "emph-weak",
-    "X-Mantra" : "mantra",
-    "X-Monuments" : "monuments",
-    "X-Name Buddhist  Deity" : "name-budd-deity",
-    "X-Name Buddhist Deity Collective" : "name-budd-deity-coll",
-    "X-Name Clan" : "name-clan",
-    "X-Name Ethnicity" : "name-ethnic",
-    "X-Name Festival" : "name-fest",
-    "X-Name Generic" : "name-gen",
-    "X-Name Lineage" : "name-line",
-    "X-Name Monastery" : "name-monastery",
-    "X-Name Organization" : "name-org",
-    "X-Name Personal Human" : "name-pers-human",
-    "X-Name Personal Other" : "name-pers-other",
-    "X-Name Place" : "name-place",
-    "X-Religious Practice" : "rel-pract",
-    "X-Speaker Buddhist Deity" : "speak-budd-deity",
-    "X-Speaker Human" : "speak-human",
-    "X-Speaker Other" : "speak-other",
-    "X-Speaker Unknown" : "speak-unknown",
-    "X-Term Chinese" : "term-chi",
-    "X-Term English" : "term-eng",
-    "X-Term Mongolian" : "term-mon",
-    "X-Term Pali" : "term-pali",
-    "X-Term Sanskrit" : "term-sans",
-    "X-Term Technical" : "term-tech",
-    "X-Term Tibetan" : "term-tib",
-    "X-Text Group" : "text-group",
-    "author" : "author",
-    "author Chinese" : "auth-chi",
-    "author English" : "auth-eng",
-    "author Sanskrit" : "auth-san",
-    "author Tibetan" : "auth-tib",
-    "endnote reference" : "endn-ref",
-    "endnote text" : "endn-text",
-    "footnote reference" : "foot-ref",
-    "footnote text" : "foot-text",
-    "line number" : "line-num",
-    "page number" : "page-num",
-    "publication place" : "pub-place",
-    "publisher" : "publisher",
-    "term Chinese" : "term-chi",
-    "term English" : "term-eng",
-    "term French" : "term-fre",
-    "term German" : "term-ger",
-    "term Japanese" : "term-jap",
-    "term Korean" : "term-kor",
-    "term Mongolian" : "term-mon",
-    "term Nepali" : "term-nep",
-    "term Pali" : "term-pali",
-    "term Sanskrit" : "term-sans",
-    "term Spanish" : "term-span",
-    "term Tibetan" : "term-tib"
+    "abbr": ["Abbreviation"],
+    "add-by-ed": ["Added by Editor"],
+    "annotations": ["Annotations"],
+    "auth-chi": ["author Chinese"],
+    "auth-eng": ["author English"],
+    "auth-gen": ["X-Author Generic"],
+    "auth-ind": ["X-Author Indian"],
+    "auth-san": ["author Sanskrit"],
+    "auth-tib": ["X-Author Tibetan", "author Tibetan"],
+    "author": ["author"],
+    "date-range": ["Date", "Date Range", "Dates", "X-Dates"],
+    "dates": ["X-Dates"],
+    "dox-cat": ["Doxographical-Bibliographical Category", "X-Doxo-Biblio Category"],
+    "emph-strong": ["Emphasis Strong", "X-Emphasis Strong", "Strong"],
+    "emph-weak": ["Emphasis Weak", "Subtle Emphasis1", "X-Emphasis Weak"],
+    "endn-char": ["Endnote Characters"],
+    "endn-ref": ["endnote reference"],
+    "endn-text": ["endnote text"],
+    "endn-text-char": ["Endnote Text Char"],
+    "epit-budd-deit": ["Epithet Buddhist Deity"],
+    "epithet": ["Epithet"],
+    "followedhyperlink": ["FollowedHyperlink"],
+    "foot-bibl": ["Footnote Bibliography"],
+    "foot-char": ["Footnote Characters"],
+    "foot-ref": ["footnote reference"],
+    "foot-text": ["footnote text"],
+    "hyperlink": ["Hyperlink"],
+    "illegible": ["Illegible"],
+    "lang-chi": ["Lang Chinese"],
+    "lang-eng": ["Lang English"],
+    "lang-fre": ["Lang French"],
+    "lang-ger": ["Lang German"],
+    "lang-jap": ["Lang Japanese"],
+    "lang-kor": ["Lang Korean"],
+    "lang-mon": ["Lang Mongolian"],
+    "lang-nep": ["Lang Nepali"],
+    "lang-pali": ["Lang Pali"],
+    "lang-sans": ["Lang Sanskrit"],
+    "lang-span": ["Lang Spanish"],
+    "lang-tib": ["Lang Tibetan"],
+    "line-num": ["line number", "LineNumber"],
+    "line-num-print": ["Line Number Print"],
+    "line-num-tib": ["Line Number Tib"],
+    "mantra": ["X-Mantra"],
+    "monuments": ["Monuments", "X-Monuments"],
+    "name-budd-deity": ["X-Name Buddhist  Deity", "Name Buddhist  Deity"],
+    "name-budd-deity-coll": ["X-Name Buddhist Deity Collective", "Name Buddhist Deity Collective"],
+    "name-clan": ["X-Name Clan"],
+    "name-ethnic": ["X-Name Ethnicity", "Name of ethnicity"],
+    "name-fest": ["Name festival", "X-Name Festival"],
+    "name-gen": ["X-Name Generic", "Name generic"],
+    "name-line": ["X-Name Lineage"],
+    "name-monastery": ["X-Name Monastery"],
+    "name-org": ["X-Name Organization", "Name organization"],
+    "name-org-clan": ["Name org clan"],
+    "name-org-line": ["Name org lineage"],
+    "name-org-monastery": ["Name organization monastery"],
+    "name-pers-human": ["X-Name Personal Human", "Name Personal Human"],
+    "name-pers-other": ["Name Personal other", "X-Name Personal Other"],
+    "name-place": ["X-Name Place", "Name Place"],
+    "name-ritual": ["Name ritual"],
+    "page-num": ["PageNumber", "page number"],
+    "page-num-print-ed": ["Page Number Print Edition"],
+    "pages": ["Pages"],
+    "placeholder-text": ["Placeholder Text1"],
+    "plain-text": ["Plain Text"],
+    "pub-place": ["publication place"],
+    "publisher": ["publisher"],
+    "rel-pract": ["Religious practice", "X-Religious Practice"],
+    "root-text": ["Root Text", "Root text"],
+    "sa-bcad": ["Sa bcad"],
+    "speak-budd-deity": ["X-Speaker Buddhist Deity", "SpeakerBuddhistDeity"],
+    "speak-budd-deity-coll": ["Speaker Buddhist Deity Collective"],
+    "speak-epit-budd-deity": ["Speaker Epithet Buddhist Deity"],
+    "speak-human": ["X-Speaker Human", "SpeakerHuman"],
+    "speak-other": ["SpeakerOther", "X-Speaker Other"],
+    "speak-unknown": ["X-Speaker Unknown"],
+    "speal-gene": ["Speaker generic"],
+    "speech-inline": ["Speech Inline"],
+    "term-chi": ["X-Term Chinese", "term Chinese"],
+    "term-eng": ["term English", "X-Term English"],
+    "term-fre": ["term French"],
+    "term-ger": ["term German"],
+    "term-jap": ["term Japanese"],
+    "term-kor": ["term Korean"],
+    "term-mon": ["term Mongolian", "X-Term Mongolian"],
+    "term-nep": ["term Nepali"],
+    "term-pali": ["term Pali", "X-Term Pali"],
+    "term-sans": ["X-Term Sanskrit", "term Sanskrit"],
+    "term-span": ["term Spanish"],
+    "term-tech": ["X-Term Technical"],
+    "term-tib": ["X-Term Tibetan", "term Tibetan"],
+    "text-group": ["TextGroup", "X-Text Group"],
+    "text-title": ["Text Title"],
+    "text-title-chap-colon": ["Text Title in Chapter Colophon"],
+    "text-title-colon": ["Text Title in Colophon"],
+    "text-title-san": ["Text Title Sanksrit"],
+    "text-title-tib": ["Text Title Tibetan"],
+    "tib-line-number": ["TibLineNumber"],
+    "title": ["Title"],
+    "title-chap": ["Title of Chapter", "Colophon Chapter Title"],
+    "title-cite-other": ["Title in Citing Other Texts"],
+    "title-own-non-tib": ["Title (Own) Non-Tibetan Language"],
+    "title-own-tib": ["Title (Own) Tibetan", "Colophon Text Titlle"],
+    "unclear": ["Unclear"]
 }
+
+# Defining global dictionary for Word style to element keys to be populated by createStyleKeyDict() function
+styledict = {}
 
 # Elements is a keyed dictionary of information for defining XML elements
 elements = {
+    "abbr" : {
+        "tag" : "abbr",
+        "attributes" : {"expand" : "%TXT%"},
+    },
     "add-by-ed" : {
         "tag" : "add",
         "attributes" : {"n" : "editor"},
@@ -187,13 +166,11 @@ elements = {
         "tag" : "persName",
         "attributes" : { "type" : "author" },
     },
-    "date" : {
-        "tag" : "date",
-        "attributes" : {},
-    },
-    "date-range" : {
+    "date-range" : {  # need to get converter to recognize split as what to split on and markup accordingly.
         "tag" : "dateRange",
-        "attributes" : {},
+        "attributes" : { "from": "%0%", "to": "%1%"},
+        "split" : "-",
+        "childels": "date",
     },
     "dox-cat" : {
         "tag" : "",
@@ -566,19 +543,35 @@ elements = {
     "unclear" : {}
 }
 
+def createStyleKeyDict(tolower=False):
+    """
+    Creates a dictionary keyed on Word Style name that returns the key for the univeral element array and stores in a global
+    Returns the global if it's already populated. The dictionary returned is keyed on Word style name and returns the
+    universal element key to use in the Element dictionary. This way more than one Word Style can have the same markup.
+    The initial key dict has as its key the key to the element dictionary and as its values arrays of Word Style names.
+
+    :param tolower: whether or not to lowercase the Word Style names used for keys in this dictionary
+    :return: styledict: The flat one-to-one dictionary of Word Style Names (capitalized or all lower) and Element dictionary keys.
+                        This can then be used to look up the Element definition for any Word Style Names
+    """
+    global keydict, styledict
+
+    if len(styledict) == 0:
+        for k in keydict.keys():
+            styles = keydict[k]
+            for stnm in styles:
+                skey = stnm
+                if tolower:
+                    skey = skey.lower()
+                styledict[skey] = k
+
+    return styledict
+
 
 def main():
-    vals = keydict.values()
-    vals.sort()
-    valset = set(vals)
-    valset = list(valset)
-    valset.sort()
-    for v in valset:
-        print "    \"{0}\" ".format(v) + ': {
-        "tag" : "",
-        "attributes" : {},
-    },'
+    skl = createStyleKeyDict()
 
+    print json.dumps(skl, indent=4)
 
 if __name__ == "__main__":
     main()
