@@ -475,17 +475,42 @@ elements = {
     }
 }
 
-def getTagFromStyle(stkey):
-    global elements
+def getStyleTagDef(style_name):
+    '''
+    Returns the definition of the tag as a python dictionary with "tag" and "attributes" keys
+    The style_name parameter can be the name of a style or the key in the element dictionary.
+    :param style_name:
+    :return:
+    '''
+    global elements, styledict
+    if len(styledict) == 0:
+        styledict = createStyleKeyDict()
+
+    if style_name in elements:
+        stkey = style_name
+    else:
+        stkey = styledict[style_name]
+
     if stkey in elements:
-        eldef = elements[stkey]
-        elout = "<{0}".format(eldef['tag'])
-        for att in eldef['attributes']:
-            elout += ' {0}="{1}"'.format(att, eldef['attributes'][att])
-        elout += '></{0}>'.format(eldef['tag'])
-        return elout
+        return elements[stkey]
     else:
         return None
+
+def getTagFromStyle(style_name):
+    '''
+    This function returns the string version of the xml tag with information filled out
+    The style_name parameter can be the name of a style or the key in the element dictionary.
+    If it is the style name, the element key is looked up in the style-key dictionary
+    :param style_name:
+    :return:
+    '''
+    global elements, styledict
+    eldef = getStyleTagDef(style_name)
+    elout = "<{0}".format(eldef['tag'])
+    for att in eldef['attributes']:
+        elout += ' {0}="{1}"'.format(att, eldef['attributes'][att])
+        elout += '></{0}>'.format(eldef['tag'])
+    return elout
 
 def createStyleKeyDict(tolower=False):
     """
@@ -512,14 +537,48 @@ def createStyleKeyDict(tolower=False):
     return styledict
 
 
-def main():
+def buildElement(stynm, text=None, vals=list()):
+    el = getTagFromStyle(stynm)
+    if text:
+        if '%TXT%' in el:
+            el = el.replace('%TXT%', text)
+        elif '></' in el:
+            el = el.replace('></', '>{0}</'.format(text))
+
+    for n, v in vals:
+        el = el.replace('%{0}%'.format(n), v)
+
+    return el
+
+
+def list_all():
+    '''
+    Lists all styles / keys/ elements in dictionary
+    '''
     skl = createStyleKeyDict()
     keys = skl.keys()
     keys.sort()
     for k in keys:
-        el = getTagFromStyle(skl[k])
+        el = getTagFromStyle(k)
         print "{0:<40} :\t\t{1:<25}:\t\t{2}".format(k, skl[k], el)
-        #print "%s\t\t:\t\t%s" % (k, skl[k])
+        # print "%s\t\t:\t\t%s" % (k, skl[k])
+
+
+def main():
+    skl = createStyleKeyDict()
+    myst = 'Doxographical-Bibliographical Category'
+    if myst in skl:
+        mu = buildElement(myst)
+        print "{0} : {1}".format(myst, mu)
+    else:
+        print "{0} ain't in no dictionary".format(myst)
+
+    myel = getStyleTagDef(myst)
+
+    print "Tag name is: {0}".format(myel['tag'])
+
+    # Lists all styles / keys/ elements in dictionary
+    # list_all()
 
     #print json.dumps(skl, indent=4)
 
