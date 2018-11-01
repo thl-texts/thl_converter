@@ -1390,7 +1390,7 @@ def getElement(chStyle, lastElement, warn=True):
     elif chStyle == "Document Map":
         # no warning
         return "none type"
-    
+
     # Detect Footnote or Endnote Reference number and place the markedup note at that point in the text
     elif "Footnote" in chStyle or "footnote" in chStyle:
         footnoteNum += 1
