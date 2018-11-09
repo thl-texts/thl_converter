@@ -78,6 +78,7 @@ def doMetadata(metaTable):
         metaText = f.read()
     except:
         print "\t Error: teiHeader.dat file not in current working directory"
+        print "\t Current directory: {0}".format(os.getcwd())
         sys.exit(1)
 
     # fill metadata schema with data from metadata table in document
@@ -372,6 +373,7 @@ def closeStyle(styName, lastElement):
 
     flag = False
 
+    # Lists
     if listOpen and "List" not in styName:
         listOpen = False
         flag = True
@@ -380,7 +382,7 @@ def closeStyle(styName, lastElement):
             lastElement = lastElement.getparent().getparent()
         global_list_level = 0
         # this is for Citation List Bullet/Number (must pop out twice b/c of <quote> & <list>)
-        # check if this breaks or works for cituations where there is a citation paragraph/verse in a regular list
+        # check if this breaks or works for citations where there is a citation paragraph/verse in a regular list
         if citOpen and "Citation" not in styName:
             citOpen = False
             return lastElement.getparent().getparent()
@@ -798,18 +800,21 @@ def interateRuns(par, lastElement):
                     except TypeError:
                         lastElement.text = run.text
                 else:
-                    if "footnote" in charStyle or "Footnote" in charStyle:
+                    if "footnote" in charStyle.lower():
                         elem.text = footnotes[footnoteNum - 1]
-                    elif "endnote" in charStyle or "Endnote" in charStyle:
+                    elif "endnote" in charStyle.lower():
                         print "endnote"
                         elem.text = endnotes[endnoteNum - 1]
+                    elif "abbreviation" in charStyle.lower():
+                        abbrtxt = run.text
+
                     else:
                         elem.text = run.text
             prevCharStyle = charStyle
 
 def iterateRange(par, lastElement):
     '''
-    Iterates through the range of a paragrah. This has been updated to deal
+    Iterates through the range of a paragrah.
     '''
     global footenotes, endnotes
 
@@ -831,9 +836,6 @@ def iterateRange(par, lastElement):
     for run in runs:
         # charStyle is the current character style.
         charStyle = run.style.name
-
-        if "name personal" in charStyle.lower():
-            print charStyle
 
         # if the character style is Default Paragraph
         if charStyle == "Default Paragraph Font":
@@ -912,9 +914,6 @@ def iterateRange(par, lastElement):
         # If the nex charStyle matches the last recorded Element and there has been a child element
         # Then append this run to the tail of the child element
         elif matchesLastElement(charStyle, lastElement) and elem is not None:
-            if charStyle == "Name Personal Human":
-                print "IT matches!"
-
             try:
                 elem.tail += run.text
             except TypeError:
@@ -938,6 +937,7 @@ def iterateRange(par, lastElement):
             if newel != 'none type':
                 lastElement = newel             # Set this as last element so it contains any next elements until Default Paragraph Style is found
                 lastElement.text = run.text
+                processSpecialElements(lastElement, charStyle)
                 elem = None
             else:                               # if char style returns nonetype then append to current elem tail or if not, then lastElem text
                 if elem is not None:
@@ -990,6 +990,22 @@ def matchesLastElement(charStyle, lastel):
 
     return True  # if it makes it here they are identical
 
+
+def processSpecialElements(el, chSty):
+    '''
+    Especially process the text of certain elements based on style name such as "Abbreviation"
+
+    :param el:
+    :param chSty:
+    :return:
+    '''
+    #print "in process special: {}".format(chSty)
+    if chSty == u'Abbreviation':
+        eltxt = unicode(el.text)
+        pts = eltxt.split(u'༼')
+        if len(pts) > 1:
+            el.text = pts[0]
+            el.set('expan', pts[1].replace(u'༽',u''))
 
 
 def getCriticalElement(crittxt):
@@ -1173,8 +1189,11 @@ def getElement(chStyle, lastElement, warn=True):
 
     elif eldef:
         elem = etree.SubElement(lastElement, eldef['tag'])
-        for nm, val in eldef['attributes']:
-            elem.set(nm, val)
+        if 'attributes' in eldef:
+            atts = eldef['attributes']
+            if isinstance(atts, dict):
+                for nm, val in atts.iteritems():
+                    elem.set(nm, val)
 
     else:
         if warn is True:
@@ -1228,9 +1247,6 @@ def convertDoc(inputFile, outpath):
     footnoteNum = endnoteNum = 0
     idTracker = []
     titlePage = None
-
-    # Create style dictionary (from styleElements.py)
-    createStyleKeyDict()
 
     # process foot/endnotes into lists
     doFootEndnotes(inputFile)

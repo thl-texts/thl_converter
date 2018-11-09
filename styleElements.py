@@ -121,7 +121,7 @@ styledict = {}
 elements = {
     "abbr" : {
         "tag" : "abbr",
-        "attributes" : {"expand" : "%TXT%"},
+        "attributes" : {"expan" : ""},
     },
     "add-by-ed" : {
         "tag" : "add",
@@ -161,7 +161,7 @@ elements = {
     },
     "date-range" : {  # need to get converter to recognize split as what to split on and markup accordingly.
         "tag" : "dateRange",
-        "attributes" : {"from" : "%0%", "to" : "%1%"},
+        "attributes" : {"from" : "", "to" : ""},
         "split" : "-",
         "childels": "date",
     },
@@ -483,18 +483,23 @@ def getStyleTagDef(style_name):
     :return:
     '''
     global elements, styledict
+    # Create styledict if not already created
     if len(styledict) == 0:
         styledict = createStyleKeyDict()
 
+    # check if style_name is key or if we need to look the key up in the styledict
     if style_name in elements:
         stkey = style_name
-    else:
+    elif style_name in styledict:
         stkey = styledict[style_name]
+    else:
+        stkey = False
 
+    # return the element def it there
     if stkey in elements:
         return elements[stkey]
-    else:
-        return None
+    #otherwise return none
+    return None
 
 def getTagFromStyle(style_name):
     '''
