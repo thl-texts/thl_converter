@@ -681,7 +681,7 @@ def doParaStyles(par, prevSty, lastElement):
 
 
 def interateRuns(par, lastElement):
-    global footenotes, endnotes
+    global footenotes, endnotes, footnoteNum, endnoteNum
 
     # styName is the current paragraph style
     styName = par.style.name
@@ -803,11 +803,7 @@ def interateRuns(par, lastElement):
                     if "footnote" in charStyle.lower():
                         elem.text = footnotes[footnoteNum - 1]
                     elif "endnote" in charStyle.lower():
-                        print "endnote"
                         elem.text = endnotes[endnoteNum - 1]
-                    elif "abbreviation" in charStyle.lower():
-                        abbrtxt = run.text
-
                     else:
                         elem.text = run.text
             prevCharStyle = charStyle
@@ -816,7 +812,7 @@ def iterateRange(par, lastElement):
     '''
     Iterates through the range of a paragrah.
     '''
-    global footenotes, endnotes
+    global footenotes, endnotes, footnoteNum, endnoteNum
 
     grandParent = lastElement   # record initial last element to return to
     # styName is the current paragraph style
@@ -888,22 +884,15 @@ def iterateRange(par, lastElement):
             # if type(elem) is etree._Element:
             #     if type(elem.tail) is unicode and elem.tail[-1] == u'}':
             #         print u"Elem Var with critical: {1} | {0}".format(footnotes[footnoteNum - 1], elem.tail)
-            if elem is not None and isinstance(elem.tail, (str, unicode)) and elem.tail[-1] == '}':
-                tailtext = elem.tail
-                openb = tailtext.rfind('{')
-                crittxt = tailtext[openb + 1:-1]
-                elem.tail = tailtext[:openb]
-                critel = getCriticalElement(crittxt)
+            if elem is not None and isinstance(elem.tail, (str, unicode)) and elem.tail[-1] == u'༽':
+                doCriticalElement(elem, 'tail')
 
-            elif lastElement is not None and isinstance(lastElement.text, (str, unicode)) and lastElement.text[-1] == '}':
-                endtext = lastElement.text
-                openb = endtext.rfind('{')
-                crittxt = endtext[openb + 1:-1]
-                lastElement.text = endtext[:openb]
-                critel = getCriticalElement(crittxt)
+            elif lastElement is not None and isinstance(lastElement.text, (str, unicode)) and lastElement.text[-1] == u'༽':
+                doCriticalElement(lastElement, 'text')
 
-            elem = getElement(charStyle, lastElement)
-            elem.text = footnotes[footnoteNum - 1]
+            else:
+                elem = getElement(charStyle, lastElement)
+                elem.text = footnotes[footnoteNum - 1]
 
         # Do Endnotes
         elif "endnote" in charStyle or "Endnote" in charStyle:
@@ -1008,19 +997,79 @@ def processSpecialElements(el, chSty):
             el.set('expan', pts[1].replace(u'༽',u''))
 
 
-def getCriticalElement(crittxt):
+def doCriticalElement(elem, txttype='tail'):
     '''
     Creates the markup for a different reading in a critical edition of a text based on {} and footnotes.
-
-    :param crittxt:
+    An example of the reading in the footnote: Lh: འདི་སྐད་ (1123a.4), KND: སྡེ་དགེ་ (56.3).
+    :param elem: the element whose tail or text has the critical edition markup in it
     :return:
     '''
 
-    # TODO This needs to be implemented!
+    global footnotes, footnoteNum
 
-    print u"Figure out getCritical element function: {0}".format(crittxt)
-    markup = "<!--who knows?-->"
-    return markup
+    if txttype == 'tail':
+        txt = elem.tail
+    elif txttype == 'text':
+        txt = elem.text
+
+    if not isinstance(txt, unicode):
+        print u"Could not find text ({}) to build apparatus: {}".format(txttype, unicode(etree.tostring(elem)))
+
+    txtpts = txt.replace(u'༼༽',u'༼none༽').split(u'༼')
+
+    if len(txtpts) == 2:
+        # parse the elements text (or tail) to find the part surrounded by ༼...༽ which is the lemma
+        pretext = txtpts[0]
+        lemma = txtpts[1].replace(u'༽','')
+        # Get the corresponding footnote text (before increasing the number by 1). These are the readings
+        rdgs = footnotes[footnoteNum]
+        footnoteNum += 1  # increase the footnote for the next one
+        # Split the individual readings on the commas.
+        temp = rdgs.split(u',')
+        rdgs = []
+        for r in temp:
+            rdg = parseReading(r.strip()) # parse each reading into a dictionary of wit(sigla), page, and text
+            if rdg:
+                rdgs.append(rdg)
+
+        # build the <app><lem></lem><rdgGrp><rdg></rdg></rdgGrp></app> element
+        app = etree.Element("app")
+        lem = etree.SubElement(app, "lem")
+        lem.text = lemma
+        rdgrp = etree.SubElement(app, "rdgGrp")
+        for r in rdgs:
+            rdg = etree.SubElement(rdgrp, "rdg")
+            if 'text' in r:
+                rdg.text = r['text']
+            if 'page' in r:
+                rdg.set('n', r['page'])
+            if 'wit' in r:
+                rdg.set('wit', r['wit'])
+
+        if type == 'tail':
+            elem.tail = pretext
+            elem.addnext(app)
+        elif type == 'text':
+            elem.text = pretext
+            elem.append(app)
+
+
+    else:
+        print u"Warning: Incorrect number of parts to split in critical element text: {}".format(txt)
+
+def parseReading(rdgtxt):
+    rdg = {}
+    pts = rdgtxt.split(u':')
+    if len(pts) == 2:
+        rdg['wit'] = pts[0].strip()
+        pts = pts[1].replace(u')', '').split(u'(')
+        rdg['text'] = pts[0]
+        if len(pts) > 1:
+            rdg['page'] = pts[1]
+            return rdg
+    else:
+        print "Warning: Reading does not have colon: {}".format(r)
+    return None
 
 
 # implement fully
