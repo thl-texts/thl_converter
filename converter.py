@@ -3,10 +3,12 @@
 
 ########## LIBRARIES ##########
 from docx import Document
+from docx.table import Table
 from lxml import etree
 from datetime import date
 import sys, os, zipfile, re
 import styleElements as styEl
+import argparse
 
 ########## GLOBAL VARIABLES ##########
 tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
@@ -21,7 +23,10 @@ titlePage = None
 footnotes = []
 endnotes = []
 root = None
-
+debugme = False
+unsupported_char = {}
+badheader_text = []
+altMetaTable = False
 
 ########## FUNCTIONS ##########
 
@@ -74,6 +79,7 @@ def doFootEndnotes(inputFile):
 def doMetadata(metaTable):
     # load metadata schema
     try:
+        if
         f = open('teiHeader.dat', 'rb')
         metaText = f.read()
     except:
@@ -165,7 +171,7 @@ def doTitle(par, lastElement):
 
 
 def doHeaders(par, lastElement, root):
-    global frontOpen, bodyOpen, backOpen, global_header_level, idTracker
+    global frontOpen, bodyOpen, backOpen, global_header_level, idTracker, badheader_text
     styName = par.style.name
     # print styName
     closeStyle(styName, lastElement)
@@ -238,8 +244,7 @@ def doHeaders(par, lastElement, root):
     elif "Heading" in styName:
         # if no front/body/back, print warning
         if not frontOpen and not bodyOpen and not backOpen:
-            print "\t Warning (IMPROPER HEADER NESTING): all Headings must be inside Front, Body, or Back"
-            print "\t\t Header text: " + par.text
+            badheader_text.append(par.text)
 
         headingNum = styName.split(" ")[1]
 
@@ -884,15 +889,20 @@ def iterateRange(par, lastElement):
             # if type(elem) is etree._Element:
             #     if type(elem.tail) is unicode and elem.tail[-1] == u'}':
             #         print u"Elem Var with critical: {1} | {0}".format(footnotes[footnoteNum - 1], elem.tail)
+            critel = False
+
             if elem is not None and isinstance(elem.tail, (str, unicode)) and elem.tail[-1] == u'༽':
-                doCriticalElement(elem, 'tail')
+                critel = doCriticalElement(elem, 'tail')
 
             elif lastElement is not None and isinstance(lastElement.text, (str, unicode)) and lastElement.text[-1] == u'༽':
-                doCriticalElement(lastElement, 'text')
+                critel = doCriticalElement(lastElement, 'text')
 
             else:
                 elem = getElement(charStyle, lastElement)
                 elem.text = footnotes[footnoteNum - 1]
+
+            if critel:
+                elem = critel
 
         # Do Endnotes
         elif "endnote" in charStyle or "Endnote" in charStyle:
@@ -1005,12 +1015,22 @@ def doCriticalElement(elem, txttype='tail'):
     :return:
     '''
 
-    global footnotes, footnoteNum
+    global footnotes, footnoteNum, debugme
+
+
 
     if txttype == 'tail':
         txt = elem.tail
     elif txttype == 'text':
         txt = elem.text
+
+    if debugme:
+        print u"\n---------------------------"
+        print u"type is: {}".format(txttype)
+        print u"Elem is: {}".format(elem.tag)
+        print u"text is: {}".format(txt)
+        print u"fnum is: [{}]".format(footnoteNum)
+        print u"footnote text is: {}".format(footnotes[footnoteNum])
 
     if not isinstance(txt, unicode):
         print u"Could not find text ({}) to build apparatus: {}".format(txttype, unicode(etree.tostring(elem)))
@@ -1020,22 +1040,31 @@ def doCriticalElement(elem, txttype='tail'):
     if len(txtpts) == 2:
         # parse the elements text (or tail) to find the part surrounded by ༼...༽ which is the lemma
         pretext = txtpts[0]
+        print u"Pretext: {}".format(pretext)
         lemma = txtpts[1].replace(u'༽','')
+
         # Get the corresponding footnote text (before increasing the number by 1). These are the readings
         rdgs = footnotes[footnoteNum]
         footnoteNum += 1  # increase the footnote for the next one
+
         # Split the individual readings on the commas.
         temp = rdgs.split(u',')
         rdgs = []
         for r in temp:
             rdg = parseReading(r.strip()) # parse each reading into a dictionary of wit(sigla), page, and text
+            if debugme:
+                print u"reading: {}".format(r)
+                print u"reading dict: {}".format(rdg)
             if rdg:
                 rdgs.append(rdg)
 
         # build the <app><lem></lem><rdgGrp><rdg></rdg></rdgGrp></app> element
         app = etree.Element("app")
         lem = etree.SubElement(app, "lem")
-        lem.text = lemma
+        if lemma == u'none':
+            lem.set('rend', 'omits')
+        else:
+            lem.text = lemma
         rdgrp = etree.SubElement(app, "rdgGrp")
         for r in rdgs:
             rdg = etree.SubElement(rdgrp, "rdg")
@@ -1046,16 +1075,26 @@ def doCriticalElement(elem, txttype='tail'):
             if 'wit' in r:
                 rdg.set('wit', r['wit'])
 
-        if type == 'tail':
+        if txttype == 'tail':
+            if debugme:
+                print u"pretxt in tail: {}".format(pretext)
+                print u"elem in tail: {}".format(elem.tag)
             elem.tail = pretext
-            elem.addnext(app)
-        elif type == 'text':
+            epar = elem.getparent()
+            epar.insert(epar.index(elem) + 1, app)
+            return app
+
+        elif txttype == 'text':
             elem.text = pretext
             elem.append(app)
-
+            return app
+        else:
+            print u"Unknown text position type: {}".format(txttype)
 
     else:
         print u"Warning: Incorrect number of parts to split in critical element text: {}".format(txt)
+
+    return False
 
 def parseReading(rdgtxt):
     rdg = {}
@@ -1063,10 +1102,10 @@ def parseReading(rdgtxt):
     if len(pts) == 2:
         rdg['wit'] = pts[0].strip()
         pts = pts[1].replace(u')', '').split(u'(')
-        rdg['text'] = pts[0]
+        rdg['text'] = pts[0].strip()
         if len(pts) > 1:
-            rdg['page'] = pts[1]
-            return rdg
+            rdg['page'] = pts[1].strip()
+        return rdg
     else:
         print "Warning: Reading does not have colon: {}".format(r)
     return None
@@ -1245,8 +1284,15 @@ def getElement(chStyle, lastElement, warn=True):
                     elem.set(nm, val)
 
     else:
-        if warn is True:
+        global debugme, unsupported_char
+        if debugme is True:
             print "\t Warning (Character Style): " + chStyle + " is not supported"
+
+        if chStyle in unsupported_char:
+            unsupported_char[chStyle] += 1
+        else:
+            unsupported_char[chStyle] = 1
+
         return "none type"
 
     return elem
@@ -1282,10 +1328,12 @@ def mergeRuns(doc):
 
 
 def convertDoc(inputFile, outpath):
-    print "converting {0} to {1}\n".format(inputFile, outpath)
     global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, \
         frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage, \
-        root
+        root, badheader_text
+
+    if debugme:
+        print "converting {0} to {1}\n".format(inputFile, outpath)
 
     # reset global variables
     tableOpen = listOpen = lgOpen = citOpen = nestedCitOpen = speechOpen = nestedSpeechOpen = False
@@ -1306,6 +1354,7 @@ def convertDoc(inputFile, outpath):
     # process metadata table
     try:
         metaTable = document.tables[0]
+
     except:
         print "\t Error: metatable not included"
         sys.exit(1)
@@ -1336,8 +1385,9 @@ def convertDoc(inputFile, outpath):
             doTitle(par, lastElement)
         # Top level paragraph that is not Front, Body, or Back (Heading) is wrong. So warn
         else:
-            print "\t Warning (IMPROPER HEADER NESTING): All paragraphs other than Title must be inside Front, Body, or Back"
-            print "\t\t Paragraph text: " + par.text
+            if par.text:
+                badheader_text.append("{}".format(par.text.strip(" \s\n\r")))
+
         prevSty = par.style.name
 
         if lastElement is None:
@@ -1358,22 +1408,21 @@ def convertDoc(inputFile, outpath):
 
 ########## MAIN ##########
 def main():
-    if len(sys.argv) == 0:
-        print "\t Argument Error: please include one or more docx files as command line arguments or the name of a folder that contains the files"
-        sys.exit(0)
+    global unsupported_char, badheader_text
 
-    firstArg = 'help' if len(sys.argv) < 2 else sys.argv[1]
-    if "help" in firstArg and '/' not in firstArg and '/' not in firstArg:
-        print "converter.py - a python script to convert THL word docs into XML markup"
-        print "\tUsage:"
-        print "\t\t python converter.py -o {output folder} {source (source) (source)}"
-        print ""
-        print "\tsource: can be either a directory of docs to convert or a list of one or more .docx files"
-        print "\t-o (optional parameter) provide a folder path into which to write or “output” the resulting XML files"
-        print "\t\t(Paths can be relative to the script)"
-        print ""
-        exit(0)
+    print "Need to finish adding the argparser!"
+    exit(0)
 
+    parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML')
+
+    parser.add_argument('source', nargs='*', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
+    parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder')
+    parser.add_argument('-mtf', '--metadata-fields', help='List the metadata fields in the template')
+    parser.add_argument('-t', '--template', default='teiHeader.dat', help='Relative path to a metadata table XML template')
+
+    args = parser.parse_args()
+
+    print "{}".format(args.source)
     docs = []
     inpath = False
     outpath = os.path.join(os.getcwd(), '../out/')
@@ -1397,14 +1446,17 @@ def main():
         status = "is" if os.path.isdir(inpath) else "is not"
         print "Converting all .docx in the path: {0}  (It {1} a directory)".format(inpath, status)
     elif len(docs) > 0:
-        print "Converting the following docs: {0}".format(', '.join(docs))
+        if debugme:
+            print "Converting the following docs: {0}".format(', '.join(docs))
     else:
         print "\tWarnging (INCORRECT ARGUMENTS): Neither docs not inpath given"
         exit(0)
 
     status = "is" if os.path.isdir(outpath) else "is not"
-    print "Outpath for the converted xml is: {0} (It {1} a directory)".format(outpath, status)
+    if debugme:
+        print "Outpath for the converted xml is: {0} (It {1} a directory)".format(outpath, status)
 
+    mysuccess = False
     # Process all .docx files in inpath
     if inpath:
         for item in os.listdir(inpath):
@@ -1412,7 +1464,7 @@ def main():
             if item.endswith(".docx") and os.path.isfile(currentPath):
                 print "Converting " + item + " to XML..."
                 convertDoc(currentPath, outpath)
-                print "Conversion successful!"
+                mysuccess = True
 
     # Process list of files given as parameters
     else:
@@ -1421,7 +1473,19 @@ def main():
             if item.endswith(".docx") and os.path.isfile(currentPath):
                 print "Converting " + item + " to XML..."
                 convertDoc(currentPath, outpath)
-                print "Conversion successful!"
+                mysuccess = True
 
+    if mysuccess:
+        if badheader_text:
+            print "\n\tThe following paragraphs were improperly nested (outside front, body, or back):"
+            for btxt in badheader_text:
+                print "\t\t{}".format(btxt)
+
+        if unsupported_char:
+            print "\n\tThe following character styles were not supported: "
+            for styl, numf in unsupported_char.iteritems():
+                print "\t\t{} ({} times)".format(styl, numf)
+
+        print "\nConversion successful!"
 
 main()
