@@ -26,7 +26,9 @@ root = None
 debugme = False
 unsupported_char = {}
 badheader_text = []
-altMetaTable = False
+metaTemplate = 'teiHeader.dat'
+convert_options = None
+
 
 ########## FUNCTIONS ##########
 
@@ -77,10 +79,11 @@ def doFootEndnotes(inputFile):
 
 
 def doMetadata(metaTable):
+    global metaTemplate
     # load metadata schema
     try:
-        if
-        f = open('teiHeader.dat', 'rb')
+        #if
+        f = open(metaTemplate, 'rb')
         metaText = f.read()
     except:
         print "\t Error: teiHeader.dat file not in current working directory"
@@ -148,6 +151,7 @@ def doMetadata(metaTable):
 
     # DATE
     metaText = metaText.replace("{Digital Creation Date}", str(date.today()))
+    metaText = re.sub(r'\{([^\}]+)\}', r'<!--\1-->', metaText)
 
     metaText += "</text></TEI.2>"
 
@@ -282,6 +286,8 @@ def doHeaders(par, lastElement, root):
                     global_header_level += 1
 
                     # Create <div> on current (newly pushed) level
+                    if lastElement.tag == 'lg':
+                        lastElement = lastElement.getparent()
                     lastElement = etree.SubElement(lastElement, "div")
                     lastElement.set("n", str(global_header_level))
                     lastElement.set("id", curID)
@@ -1406,74 +1412,92 @@ def convertDoc(inputFile, outpath):
     file.close()
 
 
+def getMetaFieldsFromTemplate():
+    global metaTemplate
+    # load metadata schema
+    try:
+        # if
+        f = open(metaTemplate, 'rb')
+        metaText = f.read()
+    except:
+        print "\t Error: teiHeader.dat file not in current working directory"
+        print "\t Current directory: {0}".format(os.getcwd())
+        sys.exit(1)
+
+    allrepstrs = re.findall(r'\{[^\}]+\}', metaText, re.MULTILINE)
+    replist = list()
+    for repstr in allrepstrs:
+        replist.append("{}".format(repstr.replace('{','').replace('}','')))
+
+    replist.sort()
+    return replist
+
+
 ########## MAIN ##########
 def main():
-    global unsupported_char, badheader_text
+    global metaTemplate, convert_options, unsupported_char, badheader_text
 
-    print "Need to finish adding the argparser!"
-    exit(0)
-
+    # Generate the arg parser and options
     parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML')
-
     parser.add_argument('source', nargs='*', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
     parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder')
-    parser.add_argument('-mtf', '--metadata-fields', help='List the metadata fields in the template')
+    parser.add_argument('-mtf', '--metafields', action='store_true', help='List the metadata fields in the template')
     parser.add_argument('-t', '--template', default='teiHeader.dat', help='Relative path to a metadata table XML template')
-
     args = parser.parse_args()
 
-    print "{}".format(args.source)
-    docs = []
-    inpath = False
-    outpath = os.path.join(os.getcwd(), '../out/')
-    getOutPath = False
-    for item in sys.argv[1:]:
-        if getOutPath:
-            outpath = os.path.join(os.getcwd(), item)
-            getOutPath = False
-        elif item == '-o':
-            getOutPath = True
-        elif item.endswith(".docx"):
-            docs.append(item)
-        else:
-            fullpath = os.path.join(os.getcwd(), item)
-            if os.path.isdir(fullpath):
-                inpath = fullpath
-            else:
-                "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
+    # Deal with template argument (by default the global variable metaTemplate is set to "teiHeader.dat"
+    if not args.template:  # Default Template
+        print "Using default template teiHeider.dat"
 
-    if inpath:
-        status = "is" if os.path.isdir(inpath) else "is not"
-        print "Converting all .docx in the path: {0}  (It {1} a directory)".format(inpath, status)
-    elif len(docs) > 0:
-        if debugme:
-            print "Converting the following docs: {0}".format(', '.join(docs))
-    else:
-        print "\tWarnging (INCORRECT ARGUMENTS): Neither docs not inpath given"
+    elif os.path.isfile(args.template): # Template from File
+        print "template arg is: {}".format(args.template)
+        metaTemplate = args.template
+
+    else:  # Throw Error is not Template given
+        print "Error: The Template path you supplied is not valid"
         exit(0)
 
-    status = "is" if os.path.isdir(outpath) else "is not"
-    if debugme:
-        print "Outpath for the converted xml is: {0} (It {1} a directory)".format(outpath, status)
+    # if -mtf or metafields argument is chosen, list metadata fields in the template
+    if args.metafields:
+        replist = getMetaFieldsFromTemplate()
+        for item in replist:
+            print item
+        exit(0)
 
+    # Check that outpath is valid
+    if not os.path.isdir(args.out):
+        print "Error: The destination directory for the XML files (outpath) is not a valid directory"
+        exit(0)
+
+    # if No source given
+    if not args.source or (isinstance(args.source, list) and len(args.source) == 0):
+        print "Error: You need to supply a directory or file name to convert!"
+        parser.print_help()
+        exit(0)
+
+    # Convert source path to list of relative file paths
+    if os.path.isdir(args.source[0]):
+        source_path = args.source[0]
+        new_list = list()
+        for sfile in os.listdir(source_path):
+            if sfile.endswith(".docx"):
+                new_list.append(os.path.join(source_path, sfile))
+        if len(new_list) > 0:
+            args.source = new_list
+        else:
+            print "Error: No valid files found in path given. All files must be of extension *.docx"
+            exit(0)
+
+    print "{}".format(args) # for debugging for time being
+
+    convert_options = args # save options globally just in case needed somewhere
     mysuccess = False
-    # Process all .docx files in inpath
-    if inpath:
-        for item in os.listdir(inpath):
-            currentPath = os.path.join(inpath, item)
-            if item.endswith(".docx") and os.path.isfile(currentPath):
-                print "Converting " + item + " to XML..."
-                convertDoc(currentPath, outpath)
-                mysuccess = True
 
-    # Process list of files given as parameters
-    else:
-        for item in docs:
-            currentPath = os.path.join(os.getcwd(), item)
-            if item.endswith(".docx") and os.path.isfile(currentPath):
-                print "Converting " + item + " to XML..."
-                convertDoc(currentPath, outpath)
-                mysuccess = True
+    for cfile in args.source:
+        print "Need to convert {}".format(cfile)
+        print "Converting {} to XML...".format(cfile)
+        convertDoc(cfile, convert_options.out)
+        mysuccess = True
 
     if mysuccess:
         if badheader_text:
@@ -1487,5 +1511,72 @@ def main():
                 print "\t\t{} ({} times)".format(styl, numf)
 
         print "\nConversion successful!"
+
+
+    # Old code
+    # docs = []
+    # inpath = False
+    # outpath = os.path.join(os.getcwd(), '../out/')
+    # getOutPath = False
+    # for item in sys.argv[1:]:
+    #     if getOutPath:
+    #         outpath = os.path.join(os.getcwd(), item)
+    #         getOutPath = False
+    #     elif item == '-o':
+    #         getOutPath = True
+    #     elif item.endswith(".docx"):
+    #         docs.append(item)
+    #     else:
+    #         fullpath = os.path.join(os.getcwd(), item)
+    #         if os.path.isdir(fullpath):
+    #             inpath = fullpath
+    #         else:
+    #             "\t Warning (IMPROPER ARGUMENT): " + item + " is not a docx file in the current working directory"
+    #
+    # if inpath:
+    #     status = "is" if os.path.isdir(inpath) else "is not"
+    #     print "Converting all .docx in the path: {0}  (It {1} a directory)".format(inpath, status)
+    # elif len(docs) > 0:
+    #     if debugme:
+    #         print "Converting the following docs: {0}".format(', '.join(docs))
+    # else:
+    #     print "\tWarnging (INCORRECT ARGUMENTS): Neither docs not inpath given"
+    #     exit(0)
+    #
+    # status = "is" if os.path.isdir(outpath) else "is not"
+    # if debugme:
+    #     print "Outpath for the converted xml is: {0} (It {1} a directory)".format(outpath, status)
+    #
+    # mysuccess = False
+    # # Process all .docx files in inpath
+    # if inpath:
+    #     for item in os.listdir(inpath):
+    #         currentPath = os.path.join(inpath, item)
+    #         if item.endswith(".docx") and os.path.isfile(currentPath):
+    #             print "Converting " + item + " to XML..."
+    #             convertDoc(currentPath, outpath)
+    #             mysuccess = True
+    #
+    # # Process list of files given as parameters
+    # else:
+    #     for item in docs:
+    #         currentPath = os.path.join(os.getcwd(), item)
+    #         if item.endswith(".docx") and os.path.isfile(currentPath):
+    #             print "Converting " + item + " to XML..."
+    #             convertDoc(currentPath, outpath)
+    #             mysuccess = True
+    #
+    # if mysuccess:
+    #     if badheader_text:
+    #         print "\n\tThe following paragraphs were improperly nested (outside front, body, or back):"
+    #         for btxt in badheader_text:
+    #             print "\t\t{}".format(btxt)
+    #
+    #     if unsupported_char:
+    #         print "\n\tThe following character styles were not supported: "
+    #         for styl, numf in unsupported_char.iteritems():
+    #             print "\t\t{} ({} times)".format(styl, numf)
+    #
+    #     print "\nConversion successful!"
 
 main()
