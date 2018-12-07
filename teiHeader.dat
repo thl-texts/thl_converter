@@ -6,6 +6,7 @@
 			<titleStmt>
 				<title lang="tib" n="main">{Title of Text}</title>
 				<title lang="tib" n="cover">{Cover Title Tib}</title>
+				<title lang="san" rend="script:deva">{Title San}</title>
 				<title lang="san" n="cover" rend="script:tib">{Cover Title San in Tib}</title>
 				<title lang="san" n="cover" rend="script:lanydza">{Cover Title San in Lanydza}</title>
 				<title lang="tib" n="spine">{Title on Spine}</title>
@@ -79,17 +80,6 @@
 						<idno type="other">{Other ID number}</idno>
 					</publicationStmt>
 				</biblFull>
-				<recordingStmt>
-					<p n="digitization-method">{Method of Process (OCR, input)}</p>
-					<p n="problems"> 
-						<list>
-							<item n="1"> 
-								<rs n="header">{Problem Cell 1}</rs> 
-								<s n="description">{Problem Cell 2}</s> 
-							</item>
-						</list> 
-					</p>
-				</recordingStmt>
 			</sourceDesc>
 		</fileDesc>
 		<profileDesc>

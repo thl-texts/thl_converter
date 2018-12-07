@@ -90,8 +90,46 @@ def doMetadata(metaTable):
         print "\t Current directory: {0}".format(os.getcwd())
         sys.exit(1)
 
-    # fill metadata schema with data from metadata table in document
 
+    # Fill out metadata matching on string in metatable with {strings} in template (teiHeader.dat)
+    metaText = metaText.replace("{Digital Creation Date}", str(date.today()))
+    problems_on = False
+    for rwnum in range(0, len(metaTable.rows)):
+        try:
+            label = metaTable.cell(rwnum, 1).text.strip()
+            if not label:
+                label = metaTable.cell(rwnum, 0).text.strip()
+            rowval = metaTable.cell(rwnum, 3).text.strip()
+            # All Uppercase are Headers in the table skip
+            if label.isupper():
+                if label == 'PROBLEMS':
+                    problems_on = True
+                continue  # Skip labels
+            if problems_on:
+                if '<encodingDesc>' not in metaText:
+                    metaText = metaText.replace(u'</fileDesc>', u'</fileDesc><encodingDesc><editorialDecl n="problems"><interpretation n="{}">'.format(label) +
+                                            u'<p>{}</p>'.format(rowval) +
+                                            u'</interpretation></editorialDecl></encodingDesc>')
+                else:
+                    metaText = metaText.replace(u'</interpretation></editorialDecl>', u'</interpretation><interpretation n="{}">'.format(label) +
+                                            u'<p>{}</p>'.format(rowval) +
+                                            u'</interpretation></editorialDecl>')
+            temppt = label.split(' (')  # some rows have " (if applicable)" or possible some other instruction
+            label = temppt[0]
+            srclbl = "{" + label + "}"
+            metaText = metaText.replace(srclbl, rowval)
+
+        except IndexError as e:
+            print "Index error in iterating metatable: {}".format(e)
+        except TypeError as e:
+            print "Type error in iterating metatable: {}".format(e)
+
+
+    metaText = re.sub(r'\{([^\}]+)\}', r'<!--\1-->', metaText)
+    metaText += "</text></TEI.2>"
+    return metaText  # ignoring old code below
+
+    # OLD METHOD fill metadata schema with data from metadata table in document (Deprecated function never gets this far)
     # BASIC METADATA
     metaText = metaText.replace("{Title of Text}", metaTable.cell(1, 3).text)
     metaText = metaText.replace("{Cover Page}", metaTable.cell(2, 3).text)
@@ -106,6 +144,9 @@ def doMetadata(metaTable):
 
     # String Labels in the XML and corresponding metadata table cell numbers (X, Y)
     # For inserting metadata into template. Could have different versions of this for different tables.
+
+
+    # Old direct correspance
     metaRows = [
         ("{Title on Spine}", 4, 3),
         ("{Margin Title}", 5, 3),
@@ -141,6 +182,7 @@ def doMetadata(metaTable):
         ("{Problem Cell 1}", 42, 1),
         ("{Problem Cell 2}", 42, 3)
     ]
+
 
     for metaField in metaRows:
         try:
@@ -185,11 +227,11 @@ def doHeaders(par, lastElement, root):
     # front
     if "Heading 0 Front" == styName:
         # close out previous paragraphs
-        while global_header_level > 0:
-            lastElement = lastElement.getparent()
-            lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
-            global_header_level -= 1
-        lastElement = lastElement.getparent()
+        # while global_header_level > 0:
+        #     lastElement = lastElement.getparent()
+        #     lastElement.append(etree.Comment("Close of Level: " + str(global_header_level)))
+        #     global_header_level -= 1
+        # lastElement = lastElement.getparent()
         lastElement = root.find('text')
         # create Front section
         front = etree.SubElement(lastElement, "front")
@@ -245,12 +287,16 @@ def doHeaders(par, lastElement, root):
         return back
 
     # do header divs within front/body/back
-    elif "Heading" in styName:
+    elif "Heading" in styName or "Interstitial" in styName:
         # if no front/body/back, print warning
         if not frontOpen and not bodyOpen and not backOpen:
             badheader_text.append(par.text)
 
-        headingNum = styName.split(" ")[1]
+        if "Interstitial" in styName:
+            headingNum = str(global_header_level)
+            print "INterstitial heading num: {}".format(headingNum)
+        else:
+            headingNum = styName.split(" ")[1]
 
         if headingNum.isdigit():
             headingNum = int(headingNum)
@@ -434,11 +480,12 @@ def closeStyle(styName, lastElement):
             else:
                 return lastElement.getparent().getparent()
         else:
-            if lgOpen:
-                lgOpen = False
-                return lastElement.getparent().getparent()
-            else:
-                return lastElement.getparent()
+            return lastElement.getparent()
+            # if lgOpen:
+            #     lgOpen = False
+            #     return lastElement.getparent().getparent()
+            # else:
+            #     return lastElement.getparent()
     elif nestedSpeechOpen and "Nested" not in styName:
         nestedSpeechOpen = False
         if lgOpen:
@@ -462,17 +509,22 @@ def doParaStyles(par, prevSty, lastElement):
 
     styName = par.style.name
     # print styName
+    if styName in ("Paragraph", "Paragraph Continued", "ParagraphContinued",  "Normal") and u'北宋' in par.text:
+        print "In the paragraph"
+
     lastElement = closeStyle(styName, lastElement)
 
-    if "Paragraph" == styName or "Normal" == styName:
+    #  Do "regular" paragraphs (just <p> tags)
+    if styName in ("Paragraph", "Paragraph Continued", "ParagraphContinued",  "Normal"):
         p = etree.SubElement(lastElement, "p")
         iterateRange(par, p)
         return lastElement
 
     # fix this based on what Than/David say
-    elif "Paragraph Continued" == styName or "ParagraphContinued" == styName:
+    elif "Paragraph Single Spaced" == styName:
         # lastElement = lastElement.getparent()
         p = etree.SubElement(lastElement, "p")
+        p.set('rend', 'nospace')
         iterateRange(par, p)
         return lastElement
 
@@ -656,18 +708,10 @@ def doParaStyles(par, prevSty, lastElement):
 
 
     elif "Section" in styName:
-        if "Interstitial" in styName:
-            div = etree.SubElement(lastElement, "div")
-            div.set("type", "interstitial")
-            head = etree.SubElement(div, "head")
-            p = etree.SubElement(div, "p")
-            iterateRange(par, p)
-            # p.text = par.text
-            return lastElement
         ms = etree.SubElement(lastElement, "milestone")
         if "Chapter Element" in styName:
-            ms.set("type", "cle")
-        elif "Top Level" in styName or "Division" in styName:
+            ms.set("unit", "cle")
+        elif "Top Level" in styName or "Division" in styName or "Level" in styName:
             ms.set("unit", "section")
             if "Second" in styName:
                 ms.set("n", "2")
@@ -869,19 +913,22 @@ def iterateRange(par, lastElement):
         # Page Number Print / Page Number or Line Numbers
         elif "Page Number" in charStyle or "PageNumber" == charStyle or \
                     "Line Number" in charStyle or "TibLineNumber" == charStyle:
-                msstrs = re.findall(r'\[[^\]]+\]', run.text)
-
-                for msstr in msstrs:
-                    msdata = parseMilestoneText(msstr)
-                    if len(msdata['n']) > 0:
-                        elem = etree.SubElement(lastElement, "milestone")
-                        elem.set("unit", msdata['unit'])
-                        elem.set("n", msdata['n'])
-                        if msdata['ed']:
-                            elem.set("ed", msdata['ed'])
-
-                        if "Line Number" == charStyle:
-                            elem.set("rend", "digital")
+                if charStyle == 'Line Number Digital' or charStyle == 'Page Number Digital':
+                    elem = etree.SubElement(lastElement, "milestone")
+                    unit = "page" if "Page" in charStyle else "line"
+                    elem.set("unit", unit)
+                    elem.set("rend", "digital")
+                    elem.set("n", run.text)
+                else:
+                    msstrs = re.findall(r'\[[^\]]+\]', run.text)
+                    for msstr in msstrs:
+                        msdata = parseMilestoneText(msstr)
+                        if len(msdata['n']) > 0:
+                            elem = etree.SubElement(lastElement, "milestone")
+                            elem.set("unit", msdata['unit'])
+                            elem.set("n", msdata['n'])
+                            if msdata['ed']:
+                                elem.set("ed", msdata['ed'])
 
         elif charStyle == "Illegible":
             elem = etree.SubElement(lastElement, "gap")
@@ -907,7 +954,7 @@ def iterateRange(par, lastElement):
                 elem = getElement(charStyle, lastElement)
                 elem.text = footnotes[footnoteNum - 1]
 
-            if critel:
+            if critel is not None:
                 elem = critel
 
         # Do Endnotes
@@ -1046,15 +1093,15 @@ def doCriticalElement(elem, txttype='tail'):
     if len(txtpts) == 2:
         # parse the elements text (or tail) to find the part surrounded by ༼...༽ which is the lemma
         pretext = txtpts[0]
-        print u"Pretext: {}".format(pretext)
+        #print u"Pretext: {}".format(pretext)
         lemma = txtpts[1].replace(u'༽','')
 
         # Get the corresponding footnote text (before increasing the number by 1). These are the readings
         rdgs = footnotes[footnoteNum]
         footnoteNum += 1  # increase the footnote for the next one
 
-        # Split the individual readings on the commas.
-        temp = rdgs.split(u',')
+        # Split the individual readings on the semicolons. See: https://docs.google.com/document/d/11C_YYg6Y4JHVa2tdAd9Jqych-1PGK-dAUS2cNZ2xS1o/edit#heading=h.6ae0yzdsuvfs
+        temp = rdgs.split(u';')
         rdgs = []
         for r in temp:
             rdg = parseReading(r.strip()) # parse each reading into a dictionary of wit(sigla), page, and text
@@ -1064,16 +1111,15 @@ def doCriticalElement(elem, txttype='tail'):
             if rdg:
                 rdgs.append(rdg)
 
-        # build the <app><lem></lem><rdgGrp><rdg></rdg></rdgGrp></app> element
+        # build the <app><lem></lem><rdg></rdg></app> element
         app = etree.Element("app")
         lem = etree.SubElement(app, "lem")
         if lemma == u'none':
             lem.set('rend', 'omits')
         else:
             lem.text = lemma
-        rdgrp = etree.SubElement(app, "rdgGrp")
         for r in rdgs:
-            rdg = etree.SubElement(rdgrp, "rdg")
+            rdg = etree.SubElement(app, "rdg")
             if 'text' in r:
                 rdg.text = r['text']
             if 'page' in r:
@@ -1103,17 +1149,23 @@ def doCriticalElement(elem, txttype='tail'):
     return False
 
 def parseReading(rdgtxt):
+    global footnoteNum
+
+    #print u"readging text: {}".format(rdgtxt)
     rdg = {}
     pts = rdgtxt.split(u':')
     if len(pts) == 2:
-        rdg['wit'] = pts[0].strip()
+        wits = pts[0].strip()
+        wits = re.sub(u',', u' ', wits)
+        wits = re.sub(u'\s+', u' ', wits)
+        rdg['wit'] = wits
         pts = pts[1].replace(u')', '').split(u'(')
         rdg['text'] = pts[0].strip()
         if len(pts) > 1:
             rdg['page'] = pts[1].strip()
         return rdg
     else:
-        print "Warning: Reading does not have colon: {}".format(r)
+        print u"Warning: Reading in footnote #{} does not have colon: {}".format(footnoteNum, rdgtxt)
     return None
 
 
@@ -1336,7 +1388,7 @@ def mergeRuns(doc):
 def convertDoc(inputFile, outpath):
     global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, \
         frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage, \
-        root, badheader_text
+        root, badheader_text, convert_options
 
     if debugme:
         print "converting {0} to {1}\n".format(inputFile, outpath)
@@ -1352,12 +1404,14 @@ def convertDoc(inputFile, outpath):
     titlePage = None
 
     # process foot/endnotes into lists
+    print "Doing footnotes ..."
     doFootEndnotes(inputFile)
 
     # read input file
     document = Document(inputFile)
 
     # process metadata table
+    print "Processing metadata table ..."
     try:
         metaTable = document.tables[0]
 
@@ -1373,13 +1427,21 @@ def convertDoc(inputFile, outpath):
     root = etree.fromstring(metaText, parser=parser)
     # print etree.tostring(root, encoding='UTF-8', xml_declaration=False)
 
+    # Debugging
+    # with open("../out/rootdoctest.xml", "wb") as fout:
+    #     docType = "<!DOCTYPE TEI.2 SYSTEM \"http://www.thlib.org:8080/cocoon/texts/catalogs/xtib3.dtd\">"
+    #     toString = etree.tostring(root, pretty_print=True, encoding='utf-8', xml_declaration=True, doctype=docType)
+    #     fout.write(toString)
+    # exit(0)
+
     # iterate through paragraphs
     lastElement = root.find('text')
     prevSty = ''
     mergeRuns(document) # Merge consequetive runs of the same style, so each run represents a new style
+    print "Processing text ..."
     for par in document.paragraphs:
         # Do the Headers
-        if "Heading" in par.style.name:
+        if "Heading" in par.style.name or "Interstitial Section" in par.style.name:
             # inDocument avoids including any paragraphs before the first structural heading
             inDocument = True
             lastElement = doHeaders(par, lastElement, root)
@@ -1403,13 +1465,25 @@ def convertDoc(inputFile, outpath):
 
     closingComments(lastElement)
 
+    # Determine Name for Resulting XML file
     fname = inputFile.split("/")[-1].split(".")[0] + '.xml'
     fpth = os.path.join(outpath, fname)
-    file = open(fpth, "wb")
-    docType = "<!DOCTYPE TEI.2 SYSTEM \"http://www.thlib.org:8080/cocoon/texts/catalogs/xtib3.dtd\">"
-    toString = etree.tostring(root, pretty_print=True, encoding='utf-8', xml_declaration=True, doctype=docType)
-    file.write(toString);
-    file.close()
+    while os.path.isfile(fpth):
+        userin = raw_input("The file {} already exists. Overwrite it (y/n/q): ".format(fname))
+        if userin == 'y':
+            break
+        elif userin == 'n':
+            fname = raw_input("Enter a new file name: ")
+            fpth = os.path.join(outpath, fname)
+        else:
+            exit(0)
+
+    # Write XML File
+    with open(fpth, "wb") as outfile:
+        dtdpath = convert_options.dtdpath
+        docType = "<!DOCTYPE TEI.2 SYSTEM \"{}xtib3.dtd\">".format(dtdpath)
+        toString = etree.tostring(root, pretty_print=True, encoding='utf-8', xml_declaration=True, doctype=docType)
+        outfile.write(toString);
 
 
 def getMetaFieldsFromTemplate():
@@ -1435,14 +1509,16 @@ def getMetaFieldsFromTemplate():
 
 ########## MAIN ##########
 def main():
-    global metaTemplate, convert_options, unsupported_char, badheader_text
+    global metaTemplate, convert_options, unsupported_char, badheader_text, debugme
 
     # Generate the arg parser and options
-    parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML')
-    parser.add_argument('source', nargs='*', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
+    parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('source', nargs='+', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
     parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder')
     parser.add_argument('-mtf', '--metafields', action='store_true', help='List the metadata fields in the template')
     parser.add_argument('-t', '--template', default='teiHeader.dat', help='Relative path to a metadata table XML template')
+    parser.add_argument('-dtd', '--dtdpath', default='http://www.thlib.org:8080/cocoon/texts/catalogs/', help='Path to the xtib3.dtd to add to the xmlfile')
     args = parser.parse_args()
 
     # Deal with template argument (by default the global variable metaTemplate is set to "teiHeader.dat"
@@ -1450,7 +1526,8 @@ def main():
         print "Using default template teiHeider.dat"
 
     elif os.path.isfile(args.template): # Template from File
-        print "template arg is: {}".format(args.template)
+        if debugme:
+            print "template arg is: {}".format(args.template)
         metaTemplate = args.template
 
     else:  # Throw Error is not Template given
@@ -1488,31 +1565,37 @@ def main():
             print "Error: No valid files found in path given. All files must be of extension *.docx"
             exit(0)
 
-    print "{}".format(args) # for debugging for time being
+    if debugme:
+        print "{}".format(args) # for debugging for time being
 
     convert_options = args # save options globally just in case needed somewhere
     mysuccess = False
 
     for cfile in args.source:
-        print "Need to convert {}".format(cfile)
+        print "**********************************"
         print "Converting {} to XML...".format(cfile)
         convertDoc(cfile, convert_options.out)
         mysuccess = True
 
+    print "Done!"
+
     if mysuccess:
         if badheader_text:
-            print "\n\tThe following paragraphs were improperly nested (outside front, body, or back):"
+            print "\nThe following paragraphs were improperly nested (outside front, body, or back):"
             for btxt in badheader_text:
-                print "\t\t{}".format(btxt)
+                print "\t{}".format(btxt)
 
         if unsupported_char:
-            print "\n\tThe following character styles were not supported: "
+            print "\nThe following character styles were not supported: "
             for styl, numf in unsupported_char.iteritems():
-                print "\t\t{} ({} times)".format(styl, numf)
+                print "\t{} ({} times)".format(styl, numf)
 
         print "\nConversion successful!"
 
+    else:
+        print "\nConversion failed!"
 
+    print "***********************************"
     # Old code
     # docs = []
     # inpath = False
