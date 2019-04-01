@@ -3,7 +3,7 @@
 
 ########## LIBRARIES ##########
 from docx import Document
-from docx.table import Table
+# from docx.table import Table
 from lxml import etree
 from datetime import date
 import sys, os, zipfile, re
@@ -294,7 +294,7 @@ def doHeaders(par, lastElement, root):
 
         if "Interstitial" in styName:
             headingNum = str(global_header_level)
-            print "INterstitial heading num: {}".format(headingNum)
+            print "Interstitial heading num: {}".format(headingNum)
         else:
             headingNum = styName.split(" ")[1]
 
@@ -646,6 +646,12 @@ def doParaStyles(par, prevSty, lastElement):
 
         if "Speech Prose" == styName or "Speech Paragraph" == styName:
             p = etree.SubElement(lastElement, "p")
+            iterateRange(par, p)
+            return lastElement
+
+        elif "Speech Paragraph Continued" == styName.replace("  ", " "):
+            p = etree.SubElement(lastElement, "p")
+            p.set("n", "cont")
             iterateRange(par, p)
             return lastElement
 
@@ -1515,7 +1521,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('source', nargs='+', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
-    parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder')
+    parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder or outfile')
     parser.add_argument('-mtf', '--metafields', action='store_true', help='List the metadata fields in the template')
     parser.add_argument('-t', '--template', default='teiHeader.dat', help='Relative path to a metadata table XML template')
     parser.add_argument('-dtd', '--dtdpath', default='http://www.thlib.org:8080/cocoon/texts/catalogs/', help='Path to the xtib3.dtd to add to the xmlfile')
@@ -1542,9 +1548,21 @@ def main():
         exit(0)
 
     # Check that outpath is valid
+    print "args out is: {}".format(args.out)
+
     if not os.path.isdir(args.out):
-        print "Error: The destination directory for the XML files (outpath) is not a valid directory"
-        exit(0)
+        print "checking for file"
+        outpts = args.out.split('/')
+        lastpt = outpts.pop()
+        newdir = '/'.join(outpts)
+        if '.' in lastpt and os.path.isdir(newdir):
+            args.out = newdir
+            args.outfilennm = lastpt
+            print "new dir is: {} and outfile name is {}".format(args.out, args.outfilenm)
+        else:
+            print "Error: The destination directory for the XML files ({}) is not a valid directory".format(args.out)
+            print "Current Dir is: {}".format(os.getcwd())
+            exit(0)
 
     # if No source given
     if not args.source or (isinstance(args.source, list) and len(args.source) == 0):
