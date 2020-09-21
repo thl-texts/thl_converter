@@ -740,8 +740,8 @@ def doParaStyles(par, prevSty, lastElement):
         iterateRange(par, p)
         return lastElement
 
-
-def interateRuns(par, lastElement):
+# This is not called ???? (nor is iterateRuns)
+def iterateRuns(par, lastElement):
     global footenotes, endnotes, footnoteNum, endnoteNum
 
     # styName is the current paragraph style
