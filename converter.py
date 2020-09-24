@@ -505,10 +505,11 @@ def doParaStyles(par, prevSty, lastElement):
     # Sets the xml element to use and then calls iterate range
     global listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, global_list_level
 
-    styName = par.style.name
+    styName = par.style.name.replace("  ", " ")
+
     # print styName
-    if styName in ("Paragraph", "Paragraph Continued", "ParagraphContinued",  "Normal") and u'北宋' in par.text:
-        print("In the paragraph")
+    # if styName in ("Paragraph", "Paragraph Continued", "ParagraphContinued",  "Normal") and '北宋' in par.text:
+    #     print("In the paragraph")
 
     lastElement = closeStyle(styName, lastElement)
 
@@ -553,8 +554,8 @@ def doParaStyles(par, prevSty, lastElement):
             iterateRange(par, item)
             return lastElement
 
-
-        # citOpen at starts of clause takes care of inserting <quote> when any new quote is started...so Paragraph Citation & Paragraph Citation Continued have same behavior
+        # citOpen at starts of clause takes care of inserting <quote> when any new quote is started...
+        # so Paragraph Citation & Paragraph Citation Continued have same behavior
         elif "Z-Depracated Paragraph Citation" == styName or "Paragraph Citation" == styName:
             p = etree.SubElement(lastElement, "p")
             iterateRange(par, p)
@@ -565,7 +566,8 @@ def doParaStyles(par, prevSty, lastElement):
             return lastElement
 
         elif "Paragraph Citation Nested" == styName:
-            if "Paragraph Citation" not in prevSty and "Citation Prose 2" not in prevSty and "Z-Depracated Paragraph Citation" not in prevSty:
+            if "Paragraph Citation" not in prevSty and "Citation Prose 2" not in prevSty \
+                    and "Z-Depracated Paragraph Citation" not in prevSty:
                 print("\t Warning (IMPROPER CITATION NESTING): " + styName + " must be preceded by Paragraph Citation")
             nestedCitOpen = True
             quote = etree.SubElement(lastElement, "quote")
@@ -630,7 +632,6 @@ def doParaStyles(par, prevSty, lastElement):
         iterateRange(par, item)
         return lastElement
 
-
     elif "Speech" in styName:
 
         if "Speech Inline" == styName:
@@ -647,13 +648,20 @@ def doParaStyles(par, prevSty, lastElement):
             iterateRange(par, p)
             return lastElement
 
-        elif "Speech Paragraph Continued" == styName.replace("  ", " "):
+        elif "Speech Paragraph Continued" == styName or "Speech Paragraph Nested Continued" == styName:
             p = etree.SubElement(lastElement, "p")
-            p.set("n", "cont")
+            p.set("rend", "cont")
             iterateRange(par, p)
             return lastElement
 
-        elif "Speech Prose Nested" == styName or "Speech Paragraph Nested" == styName:
+        elif "Speech Paragraph Nested" == styName.replace("  ", " "):
+            nestedSpeechOpen = True
+            lastElement = etree.SubElement(lastElement, "q")
+            p = etree.SubElement(lastElement, "p")
+            iterateRange(par, p)
+            return lastElement
+
+        elif "Speech Prose Nested" == styName:
             if "Speech Prose" not in prevSty and "Speech Paragraph" not in prevSty:
                 print("\t Warning (IMPROPER SPEECH NESTING): " + styName + "must be preceded by Speech Paragraph")
             nestedSpeechOpen = True
@@ -709,8 +717,6 @@ def doParaStyles(par, prevSty, lastElement):
             print("\t Warning (Paragraph Style): " + styName + " is not a supported Verse Style")
             return lastElement
 
-
-
     elif "Section" in styName:
         ms = etree.SubElement(lastElement, "milestone")
         if "Chapter Element" in styName:
@@ -730,8 +736,6 @@ def doParaStyles(par, prevSty, lastElement):
         ms.set("rend", par.text)
         return lastElement
 
-
-
     else:
         print("\t Warning (Paragraph Style): " + styName + " is not supported")
         p = etree.SubElement(lastElement, "p")
@@ -739,7 +743,7 @@ def doParaStyles(par, prevSty, lastElement):
         return lastElement
 
 
-# This is not called ???? (nor is iterateRuns)
+# Is this called???
 def iterateRuns(par, lastElement):
     global footnotes, endnotes, footnoteNum, endnoteNum
 
@@ -1078,8 +1082,6 @@ def doCriticalElement(elem, txttype='tail'):
 
     global footnotes, footnoteNum, debugme
 
-
-
     if txttype == 'tail':
         txt = elem.tail
     elif txttype == 'text':
@@ -1156,10 +1158,11 @@ def doCriticalElement(elem, txttype='tail'):
 
     return False
 
+
 def parseReading(rdgtxt):
     global footnoteNum
 
-    #print u"readging text: {}".format(rdgtxt)
+    # print u"readging text: {}".format(rdgtxt)
     rdg = {}
     pts = rdgtxt.split(u':')
     if len(pts) == 2:
@@ -1317,6 +1320,7 @@ def parseMilestoneText(msstr):
 
     return data
 
+
 def getElement(chStyle, lastElement, warn=True):
     '''
     Gets the element based on the Word-style uses the "getStyleTagDef(stnm)" function in styleElement.py
@@ -1394,6 +1398,7 @@ def mergeRuns(doc):
 
 
 def convertDoc(inputFile, outpath):
+    """ The main function that converts a Word doc to XML """
     global tableOpen, listOpen, lgOpen, citOpen, nestedCitOpen, speechOpen, nestedSpeechOpen, bodyOpen, backOpen, \
         frontOpen, global_header_level, inDocument, global_list_level, footnoteNum, endnoteNum, idTracker, titlePage, \
         root, badheader_text, convert_options
@@ -1423,7 +1428,7 @@ def convertDoc(inputFile, outpath):
     try:
         metaTable = document.tables[0]
 
-    except:
+    except (IndexError, AttributeError):
         print("\t Error: metatable not included")
         sys.exit(1)
 
@@ -1445,7 +1450,7 @@ def convertDoc(inputFile, outpath):
     # iterate through paragraphs
     lastElement = root.find('text')
     prevSty = ''
-    mergeRuns(document) # Merge consequetive runs of the same style, so each run represents a new style
+    mergeRuns(document)  # Merge consequetive runs of the same style, so each run represents a new style
     print("Processing text ...")
     for par in document.paragraphs:
         # Do the Headers
@@ -1517,11 +1522,11 @@ def getMetaFieldsFromTemplate():
 
 ########## MAIN ##########
 def main():
+    """ Parses arguments and calls convertDoc() on all documents listed """
     global metaTemplate, convert_options, unsupported_char, badheader_text, debugme
 
     # Generate the arg parser and options
-    parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML')
     parser.add_argument('source', nargs='+', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
     parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder or outfile')
     parser.add_argument('-mtf', '--metafields', action='store_true', help='List the metadata fields in the template')

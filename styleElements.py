@@ -119,361 +119,362 @@ styledict = {}
 
 # Elements is a keyed dictionary of information for defining XML elements
 elements = {
-    "abbr" : {
-        "tag" : "abbr",
-        "attributes" : {"expan" : ""},
+    "abbr": {
+        "tag": "abbr",
+        "attributes": {"expan": ""},
     },
-    "add-by-ed" : {
-        "tag" : "add",
-        "attributes" : {"n" : "editor"},
+    "add-by-ed": {
+        "tag": "add",
+        "attributes": {"n": "editor"},
     },
-    "annotations" : {
-        "tag" : "note",
-        "attributes" : {"type" : "annotation"},
+    "annotations": {
+        "tag": "note",
+        "attributes": {"type": "annotation"},
     },
-    "auth-chi" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author", "n" : "chinese"},
+    "auth-chi": {
+        "tag": "persName",
+        "attributes": {"type": "author", "n": "chinese"},
     },
-    "auth-eng" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author", "n" : "engish"},
+    "auth-eng": {
+        "tag": "persName",
+        "attributes": {"type": "author", "n": "engish"},
     },
-    "auth-gen" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author", "n" : "generic"},
+    "auth-gen": {
+        "tag": "persName",
+        "attributes": {"type": "author", "n": "generic"},
     },
-    "auth-ind" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author", "n" : "indian"},
+    "auth-ind": {
+        "tag": "persName",
+        "attributes": {"type": "author", "n": "indian"},
     },
-    "auth-san" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author", "n" : "sanskrit"},
+    "auth-san": {
+        "tag": "persName",
+        "attributes": {"type": "author", "n": "sanskrit"},
     },
-    "auth-tib" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author", "n" : "tibetan"},
+    "auth-tib": {
+        "tag": "persName",
+        "attributes": {"type": "author", "n": "tibetan"},
     },
-    "author" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "author"},
+    "author": {
+        "tag": "persName",
+        "attributes": {"type": "author"},
     },
-    "date-range" : {  # need to get converter to recognize split as what to split on and markup accordingly.
-        "tag" : "dateRange",
-        "attributes" : {"from" : "", "to" : ""},
-        "split" : "-",
+    "date-range": {  # need to get converter to recognize split as what to split on and markup accordingly.
+        "tag": "dateRange",
+        "attributes": {"from": "", "to": ""},
+        "split": "-",
         "childels": "date",
     },
-    "dox-cat" : {
-        "tag" : "term",
-        "attributes" : {"type" : "doxcat"},
-    },
-    "emph-strong" : {
-        "tag" : "hi",
-        "attributes" : {"rend" : "strong"},
-    },
-    "emph-weak" : {
-        "tag" : "hi",
-        "attributes" : {"rend" : "weak"},
-    },
-    "epithet" : {
-        "tag" : "name",
-        "attributes" : {"type" : "epithet"},
-    },
-    "hyperlink" : {
-        "tag" : "xref",
-        "attributes" : {"n" : "%0%", "type" : "url"},
-    },
-    "illegible" : {
-        "tag" : "gap",
-        "attributes" : {"n" : "", "reason" : "illegible"},
-    },
-    "lang-chi" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "chi"},
-    },
-    "lang-eng" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "eng"},
-    },
-    "lang-fre" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "fre"},
-    },
-    "lang-ger" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "ger"},
-    },
-    "lang-jap" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "jap"},
-    },
-    "lang-kor" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "kor"},
-    },
-    "lang-mon" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "mon"},
-    },
-    "lang-nep" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "nep"},
-    },
-    "lang-pali" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "pli"},
-    },
-    "lang-sans" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "san"},
-    },
-    "lang-span" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "spa"},
-    },
-    "lang-tib" : {
-        "tag" : "seg",
-        "attributes" : {"lang" : "tib"},
-    },
-    "line-num" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "line", "n" : "%TXT%"},
-    },
-    "line-num-dig" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "digline"},
-    },
-    "line-num-print" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "line", "n":"%TXT%"},
-    },
-    "line-num-tib" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "tibline", "n":"%TXT%"},
-    },
-    "mantra" : {
-        "tag" : "rs",
-        "attributes" : {"type" : "mantra"},
-    },
-    "monuments" : {
-        "tag" : "placeName",
-        "attributes" : {"type" : "monument"},
-    },
-    "name-bud-deity" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "bud-deity"},
-    },
-    "name-bud-deity-coll" : {
-        "tag" : "orgName",
-        "attributes" : {"type" : "bud-deity"},
-    },
-    "name-ethnic" : {
-        "tag" : "orgName",
-        "attributes" : {"type" : "ethnicity"},
-    },
-    "name-fest" : {
-        "tag" : "term",
-        "attributes" : {"type" : "festival"},
-    },
-    "name-gen" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "generic"},
-    },
-    "name-org" : {
-        "tag" : "orgName",
-        "attributes" : {},
-    },
-    "name-org-clan" : {
-        "tag" : "orgName",
-        "attributes" : {"type" : "clan"},
-    },
-    "name-org-line" : {
-        "tag" : "orgName",
-        "attributes" : {"type" : "lineage"},
-    },
-    "name-org-monastery" : {
-        "tag" : "placeName",
-        "attributes" : {"type" : "monastery"},
-    },
-    "name-pers-human" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "human"},
-    },
-    "name-pers-other" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "other"},
-    },
-    "name-place" : {
-        "tag" : "placeName",
-        "attributes" : {},
-    },
-    "name-rel-pract" : {
-        "tag" : "term",
-        "attributes" : {"type" : "religious-practice"},
-    },
-    "page-num" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "page", "n" : "%TXT%"},
-    },
-    "page-num-print-ed" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "page", "n" : "%TXT%"},
-    },
-    "pages" : {
-        "tag" : "num",
-        "attributes" : {"type" : "page-range"},
-    },
-    "plain-text" : {
-        "tag" : "hi",
-        "attributes" : {"rend" : "plain"},
-    },
-    "pub-place" : {
-        "tag" : "pubPlace",
-        "attributes" : {},
-    },
-    "publisher" : {
-        "tag" : "publisher",
-        "attributes" : {},
-    },
-    "root-text" : {
-        "tag" : "seg",
-        "attributes" : {"type" : "roottext"},
-    },
-    "sa-bcad" : {
-        "tag" : "rs",
-        "attributes" : {"type" : "sabcad"},
-    },
-    "speak-bud-deity" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "speaker-bud-deity"},
-    },
-    "speak-bud-deity-coll" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "speaker-bud-deity-coll"},
-    },
-    "speak-human" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "speaker-human"},
-    },
-    "speak-other" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "speaker-other"},
-    },
-    "speak-unknown" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "speaker-unknown"},
-    },
-    "speak-gene" : {
-        "tag" : "persName",
-        "attributes" : {"type" : "speaker-generic"},
-    },
-    "speech-inline" : {
-        "tag" : "q",
-        "attributes" : {"rend" : "inline"},
-    },
-    "term-chi" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "chi"},
-    },
-    "term-eng" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "eng"},
-    },
-    "term-fre" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "fre"},
-    },
-    "term-ger" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "ger"},
-    },
-    "term-jap" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "jap"},
-    },
-    "term-kor" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "kor"},
-    },
-    "term-mon" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "mon"},
-    },
-    "term-nep" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "nep"},
-    },
-    "term-pali" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "pli"},
-    },
-    "term-sans" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "san"},
-    },
-    "term-span" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "spa"},
-    },
-    "term-tech" : {
-        "tag" : "term",
-        "attributes" : {"n" : "technical"},
-    },
-    "term-tib" : {
-        "tag" : "term",
-        "attributes" : {"lang" : "tib"},
-    },
-    "text-group" : {
-        "tag" : "title",
-        "attributes" : {"level" : "s", "n" : "text-group"},
-    },
-    "text-title" : {
-        "tag" : "title",
-        "attributes" : {"level" : "m"},
-    },
-    "text-title-san" : {
-        "tag" : "title",
-        "attributes" : {"level" : "m", "lang" : "san"},
-    },
-    "text-title-tib" : {
-        "tag" : "title",
-        "attributes" : {"level" : "m", "lang" : "tib"},
-    },
-    "tib-line-number" : {
-        "tag" : "milestone",
-        "attributes" : {"unit" : "line", "lang" : "tib"},
-    },
-    "title" : {
-        "tag" : "title",
-        "attributes" : {},
-    },
-    "title-chap" : {
-        "tag" : "title",
-        "attributes" : {"level" : "a", "n" : "chapter", "type" : "internal"},
-    },
-    "title-cite-other" : {
-        "tag" : "title",
-        "attributes" : {"level" : "m", "type" : "external"},
-    },
-    "title-own-non-tib" : {
-        "tag" : "title",
-        "attributes" : {"level" : "m", "n" : "non-tib", "type" : "internal"},
-    },
-    "title-own-tib" : {
-        "tag" : "title",
-        "attributes" : {"level" : "m", "lang" : "tib", "type" : "internal"},
-    },
-    "title-section" : {
-        "tag" : "title",
-        "attributes" : {"level" : "a", "n" : "section", "type" : "internal"},
-    },
-    "unclear" : {
-        "tag" : "unclear",
-        "attributes" : {},
+    "dox-cat": {
+        "tag": "term",
+        "attributes": {"type": "doxcat"},
+    },
+    "emph-strong": {
+        "tag": "hi",
+        "attributes": {"rend": "strong"},
+    },
+    "emph-weak": {
+        "tag": "hi",
+        "attributes": {"rend": "weak"},
+    },
+    "epithet": {
+        "tag": "name",
+        "attributes": {"type": "epithet"},
+    },
+    "hyperlink": {
+        "tag": "xref",
+        "attributes": {"n": "%0%", "type": "url"},
+    },
+    "illegible": {
+        "tag": "gap",
+        "attributes": {"n": "", "reason": "illegible"},
+    },
+    "lang-chi": {
+        "tag": "seg",
+        "attributes": {"lang": "chi"},
+    },
+    "lang-eng": {
+        "tag": "seg",
+        "attributes": {"lang": "eng"},
+    },
+    "lang-fre": {
+        "tag": "seg",
+        "attributes": {"lang": "fre"},
+    },
+    "lang-ger": {
+        "tag": "seg",
+        "attributes": {"lang": "ger"},
+    },
+    "lang-jap": {
+        "tag": "seg",
+        "attributes": {"lang": "jap"},
+    },
+    "lang-kor": {
+        "tag": "seg",
+        "attributes": {"lang": "kor"},
+    },
+    "lang-mon": {
+        "tag": "seg",
+        "attributes": {"lang": "mon"},
+    },
+    "lang-nep": {
+        "tag": "seg",
+        "attributes": {"lang": "nep"},
+    },
+    "lang-pali": {
+        "tag": "seg",
+        "attributes": {"lang": "pli"},
+    },
+    "lang-sans": {
+        "tag": "seg",
+        "attributes": {"lang": "san"},
+    },
+    "lang-span": {
+        "tag": "seg",
+        "attributes": {"lang": "spa"},
+    },
+    "lang-tib": {
+        "tag": "seg",
+        "attributes": {"lang": "tib"},
+    },
+    "line-num": {
+        "tag": "milestone",
+        "attributes": {"unit": "line", "n": "%TXT%"},
+    },
+    "line-num-dig": {
+        "tag": "milestone",
+        "attributes": {"unit": "digline"},
+    },
+    "line-num-print": {
+        "tag": "milestone",
+        "attributes": {"unit": "line", "n":"%TXT%"},
+    },
+    "line-num-tib": {
+        "tag": "milestone",
+        "attributes": {"unit": "tibline", "n":"%TXT%"},
+    },
+    "mantra": {
+        "tag": "rs",
+        "attributes": {"type": "mantra"},
+    },
+    "monuments": {
+        "tag": "placeName",
+        "attributes": {"type": "monument"},
+    },
+    "name-bud-deity": {
+        "tag": "persName",
+        "attributes": {"type": "bud-deity"},
+    },
+    "name-bud-deity-coll": {
+        "tag": "orgName",
+        "attributes": {"type": "bud-deity"},
+    },
+    "name-ethnic": {
+        "tag": "orgName",
+        "attributes": {"type": "ethnicity"},
+    },
+    "name-fest": {
+        "tag": "term",
+        "attributes": {"type": "festival"},
+    },
+    "name-gen": {
+        "tag": "persName",
+        "attributes": {"type": "generic"},
+    },
+    "name-org": {
+        "tag": "orgName",
+        "attributes": {},
+    },
+    "name-org-clan": {
+        "tag": "orgName",
+        "attributes": {"type": "clan"},
+    },
+    "name-org-line": {
+        "tag": "orgName",
+        "attributes": {"type": "lineage"},
+    },
+    "name-org-monastery": {
+        "tag": "placeName",
+        "attributes": {"type": "monastery"},
+    },
+    "name-pers-human": {
+        "tag": "persName",
+        "attributes": {"type": "human"},
+    },
+    "name-pers-other": {
+        "tag": "persName",
+        "attributes": {"type": "other"},
+    },
+    "name-place": {
+        "tag": "placeName",
+        "attributes": {},
+    },
+    "name-rel-pract": {
+        "tag": "term",
+        "attributes": {"type": "religious-practice"},
+    },
+    "page-num": {
+        "tag": "milestone",
+        "attributes": {"unit": "page", "n": "%TXT%"},
+    },
+    "page-num-print-ed": {
+        "tag": "milestone",
+        "attributes": {"unit": "page", "n": "%TXT%"},
+    },
+    "pages": {
+        "tag": "num",
+        "attributes": {"type": "page-range"},
+    },
+    "plain-text": {
+        "tag": "hi",
+        "attributes": {"rend": "plain"},
+    },
+    "pub-place": {
+        "tag": "pubPlace",
+        "attributes": {},
+    },
+    "publisher": {
+        "tag": "publisher",
+        "attributes": {},
+    },
+    "root-text": {
+        "tag": "seg",
+        "attributes": {"type": "roottext"},
+    },
+    "sa-bcad": {
+        "tag": "rs",
+        "attributes": {"type": "sabcad"},
+    },
+    "speak-bud-deity": {
+        "tag": "persName",
+        "attributes": {"type": "speaker-bud-deity"},
+    },
+    "speak-bud-deity-coll": {
+        "tag": "persName",
+        "attributes": {"type": "speaker-bud-deity-coll"},
+    },
+    "speak-human": {
+        "tag": "persName",
+        "attributes": {"type": "speaker-human"},
+    },
+    "speak-other": {
+        "tag": "persName",
+        "attributes": {"type": "speaker-other"},
+    },
+    "speak-unknown": {
+        "tag": "persName",
+        "attributes": {"type": "speaker-unknown"},
+    },
+    "speak-gene": {
+        "tag": "persName",
+        "attributes": {"type": "speaker-generic"},
+    },
+    "speech-inline": {
+        "tag": "q",
+        "attributes": {"rend": "inline"},
+    },
+    "term-chi": {
+        "tag": "term",
+        "attributes": {"lang": "chi"},
+    },
+    "term-eng": {
+        "tag": "term",
+        "attributes": {"lang": "eng"},
+    },
+    "term-fre": {
+        "tag": "term",
+        "attributes": {"lang": "fre"},
+    },
+    "term-ger": {
+        "tag": "term",
+        "attributes": {"lang": "ger"},
+    },
+    "term-jap": {
+        "tag": "term",
+        "attributes": {"lang": "jap"},
+    },
+    "term-kor": {
+        "tag": "term",
+        "attributes": {"lang": "kor"},
+    },
+    "term-mon": {
+        "tag": "term",
+        "attributes": {"lang": "mon"},
+    },
+    "term-nep": {
+        "tag": "term",
+        "attributes": {"lang": "nep"},
+    },
+    "term-pali": {
+        "tag": "term",
+        "attributes": {"lang": "pli"},
+    },
+    "term-sans": {
+        "tag": "term",
+        "attributes": {"lang": "san"},
+    },
+    "term-span": {
+        "tag": "term",
+        "attributes": {"lang": "spa"},
+    },
+    "term-tech": {
+        "tag": "term",
+        "attributes": {"n": "technical"},
+    },
+    "term-tib": {
+        "tag": "term",
+        "attributes": {"lang": "tib"},
+    },
+    "text-group": {
+        "tag": "title",
+        "attributes": {"level": "s", "n": "text-group"},
+    },
+    "text-title": {
+        "tag": "title",
+        "attributes": {"level": "m"},
+    },
+    "text-title-san": {
+        "tag": "title",
+        "attributes": {"level": "m", "lang": "san"},
+    },
+    "text-title-tib": {
+        "tag": "title",
+        "attributes": {"level": "m", "lang": "tib"},
+    },
+    "tib-line-number": {
+        "tag": "milestone",
+        "attributes": {"unit": "line", "lang": "tib"},
+    },
+    "title": {
+        "tag": "title",
+        "attributes": {},
+    },
+    "title-chap": {
+        "tag": "title",
+        "attributes": {"level": "a", "n": "chapter", "type": "internal"},
+    },
+    "title-cite-other": {
+        "tag": "title",
+        "attributes": {"level": "m", "type": "external"},
+    },
+    "title-own-non-tib": {
+        "tag": "title",
+        "attributes": {"level": "m", "n": "non-tib", "type": "internal"},
+    },
+    "title-own-tib": {
+        "tag": "title",
+        "attributes": {"level": "m", "lang": "tib", "type": "internal"},
+    },
+    "title-section": {
+        "tag": "title",
+        "attributes": {"level": "a", "n": "section", "type": "internal"},
+    },
+    "unclear": {
+        "tag": "unclear",
+        "attributes": {},
     }
 }
+
 
 def getStyleTagDef(style_name):
     '''
@@ -501,6 +502,7 @@ def getStyleTagDef(style_name):
     #otherwise return none
     return None
 
+
 def getTagFromStyle(style_name):
     '''
     This function returns the string version of the xml tag with information filled out
@@ -516,6 +518,7 @@ def getTagFromStyle(style_name):
         elout += ' {0}="{1}"'.format(att, eldef['attributes'][att])
         elout += '></{0}>'.format(eldef['tag'])
     return elout
+
 
 def createStyleKeyDict(tolower=False):
     """
@@ -565,7 +568,7 @@ def list_all():
     keys.sort()
     for k in keys:
         el = getTagFromStyle(k)
-        print "{0:<40} :\t\t{1:<25}:\t\t{2}".format(k, skl[k], el)
+        print("{0:<40} :\t\t{1:<25}:\t\t{2}".format(k, skl[k], el))
         # print "%s\t\t:\t\t%s" % (k, skl[k])
 
 
@@ -574,18 +577,20 @@ def main():
     myst = 'Doxographical-Bibliographical Category'
     if myst in skl:
         mu = buildElement(myst)
-        print "{0} : {1}".format(myst, mu)
+        print("{0} : {1}".format(myst, mu))
     else:
-        print "{0} ain't in no dictionary".format(myst)
+        print("{0} ain't in no dictionary".format(myst))
 
     myel = getStyleTagDef(myst)
 
-    print "Tag name is: {0}".format(myel['tag'])
+    print("Tag name is: {0}".format(myel['tag']))
 
     # Lists all styles / keys/ elements in dictionary
     # list_all()
 
     #print json.dumps(skl, indent=4)
 
+
 if __name__ == "__main__":
     main()
+
