@@ -12,6 +12,8 @@ To convert a marked-up Word document (example.docx) to XML, enter this directory
 This command generates example.xml.
 
 ## Dependencies
-- Python (>= 2.7)
+- Python (>= 3.7.3)
 - [lxml](http://lxml.de/installation.html) (>= 3.6.4)
 - [python-docx](http://python-docx.readthedocs.io/en/latest/user/install.html) (>=0.8.6)
+
+TODO: Check dependencies when done

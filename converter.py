@@ -6,7 +6,10 @@ from docx import Document
 # from docx.table import Table
 from lxml import etree
 from datetime import date
-import sys, os, zipfile, re
+import sys
+import os
+import zipfile
+import re
 import styleElements as styEl
 import argparse
 
@@ -30,7 +33,7 @@ metaTemplate = 'teiHeader.dat'
 convert_options = None
 
 
-########## FUNCTIONS ##########
+# ########## FUNCTIONS ##########
 
 def doFootEndnotes(inputFile):
     """
@@ -105,13 +108,13 @@ def doMetadata(metaTable):
                 continue  # Skip labels
             if problems_on:
                 if '<encodingDesc>' not in metaText:
-                    metaText = metaText.replace(u'</fileDesc>', u'</fileDesc><encodingDesc><editorialDecl n="problems"><interpretation n="{}">'.format(label) +
-                                            u'<p>{}</p>'.format(rowval) +
-                                            u'</interpretation></editorialDecl></encodingDesc>')
+                    metaText = metaText.replace('</fileDesc>', '</fileDesc><encodingDesc><editorialDecl n="problems"><interpretation n="{}">'.format(label) +
+                                            '<p>{}</p>'.format(rowval) +
+                                            '</interpretation></editorialDecl></encodingDesc>')
                 else:
-                    metaText = metaText.replace(u'</interpretation></editorialDecl>', u'</interpretation><interpretation n="{}">'.format(label) +
-                                            u'<p>{}</p>'.format(rowval) +
-                                            u'</interpretation></editorialDecl>')
+                    metaText = metaText.replace('</interpretation></editorialDecl>', '</interpretation><interpretation n="{}">'.format(label) +
+                                            '<p>{}</p>'.format(rowval) +
+                                            '</interpretation></editorialDecl>')
             temppt = label.split(' (')  # some rows have " (if applicable)" or possible some other instruction
             label = temppt[0]
             srclbl = "{" + label + "}"
@@ -952,14 +955,14 @@ def iterateRange(par, lastElement):
             #if type(lastElement) is etree._Element:
                 #print u"last element: {0}, content : {1}, tail: {2}".format(lastElement.tag, lastElement.text, lastElement.tail)
             # if type(elem) is etree._Element:
-            #     if type(elem.tail) is unicode and elem.tail[-1] == u'}':
+            #     if type(elem.tail) is unicode and elem.tail[-1] == }':
             #         print u"Elem Var with critical: {1} | {0}".format(footnotes[footnoteNum - 1], elem.tail)
             critel = False
 
-            if elem is not None and isinstance(elem.tail, str) and elem.tail[-1] == u'༽':
+            if elem is not None and isinstance(elem.tail, str) and elem.tail[-1] == '༽':
                 critel = doCriticalElement(elem, 'tail')
 
-            elif lastElement is not None and isinstance(lastElement.text, str) and lastElement.text[-1] == u'༽':
+            elif lastElement is not None and isinstance(lastElement.text, str) and lastElement.text[-1] == '༽':
                 critel = doCriticalElement(lastElement, 'text')
 
             else:
@@ -1064,12 +1067,12 @@ def processSpecialElements(el, chSty):
     :return:
     '''
     #print "in process special: {}".format(chSty)
-    if chSty == u'Abbreviation':
+    if chSty == 'Abbreviation':
         eltxt = el.text
-        pts = eltxt.split(u'༼')
+        pts = eltxt.split('༼')
         if len(pts) > 1:
             el.text = pts[0]
-            el.set('expan', pts[1].replace(u'༽',u''))
+            el.set('expan', pts[1].replace('༽', ''))
 
 
 def doCriticalElement(elem, txttype='tail'):
@@ -1082,6 +1085,7 @@ def doCriticalElement(elem, txttype='tail'):
 
     global footnotes, footnoteNum, debugme
 
+    txt = ''
     if txttype == 'tail':
         txt = elem.tail
     elif txttype == 'text':
@@ -1098,20 +1102,20 @@ def doCriticalElement(elem, txttype='tail'):
     if not isinstance(txt, str):
         print("Could not find text ({}) to build apparatus: {}".format(txttype, etree.tostring(elem)))
 
-    txtpts = txt.replace(u'༼༽',u'༼none༽').split(u'༼')
+    txtpts = txt.replace('༼༽', '༼none༽').split('༼')
 
     if len(txtpts) == 2:
         # parse the elements text (or tail) to find the part surrounded by ༼...༽ which is the lemma
         pretext = txtpts[0]
-        #print u"Pretext: {}".format(pretext)
-        lemma = txtpts[1].replace(u'༽','')
+        # print u"Pretext: {}".format(pretext)
+        lemma = txtpts[1].replace('༽', '')
 
         # Get the corresponding footnote text (before increasing the number by 1). These are the readings
         rdgs = footnotes[footnoteNum]
         footnoteNum += 1  # increase the footnote for the next one
 
         # Split the individual readings on the semicolons. See: https://docs.google.com/document/d/11C_YYg6Y4JHVa2tdAd9Jqych-1PGK-dAUS2cNZ2xS1o/edit#heading=h.6ae0yzdsuvfs
-        temp = rdgs.split(u';')
+        temp = rdgs.split(';')
         rdgs = []
         for r in temp:
             rdg = parseReading(r.strip()) # parse each reading into a dictionary of wit(sigla), page, and text
@@ -1124,7 +1128,7 @@ def doCriticalElement(elem, txttype='tail'):
         # build the <app><lem></lem><rdg></rdg></app> element
         app = etree.Element("app")
         lem = etree.SubElement(app, "lem")
-        if lemma == u'none':
+        if lemma == 'none':
             lem.set('rend', 'omits')
         else:
             lem.text = lemma
@@ -1164,13 +1168,13 @@ def parseReading(rdgtxt):
 
     # print u"readging text: {}".format(rdgtxt)
     rdg = {}
-    pts = rdgtxt.split(u':')
+    pts = rdgtxt.split(':')
     if len(pts) == 2:
         wits = pts[0].strip()
-        wits = re.sub(u',', u' ', wits)
-        wits = re.sub(u'\s+', u' ', wits)
+        wits = re.sub(',', ' ', wits)
+        wits = re.sub(r'\s+', ' ', wits)
         rdg['wit'] = wits
-        pts = pts[1].replace(u')', '').split(u'(')
+        pts = pts[1].replace(')', '').split('(')
         rdg['text'] = pts[0].strip()
         if len(pts) > 1:
             rdg['page'] = pts[1].strip()
@@ -1520,18 +1524,27 @@ def getMetaFieldsFromTemplate():
     return replist
 
 
-########## MAIN ##########
 def main():
     """ Parses arguments and calls convertDoc() on all documents listed """
     global metaTemplate, convert_options, unsupported_char, badheader_text, debugme
 
     # Generate the arg parser and options
     parser = argparse.ArgumentParser(description='Convert THL Word marked up documents to THL TEI XML')
-    parser.add_argument('source', nargs='+', help='The space-separated paths to one or more Word documents to be converted. (Paths can be relative.)')
-    parser.add_argument('-o', '--out', default='../out', help='The relative path to the outfolder or outfile')
-    parser.add_argument('-mtf', '--metafields', action='store_true', help='List the metadata fields in the template')
-    parser.add_argument('-t', '--template', default='teiHeader.dat', help='Relative path to a metadata table XML template')
-    parser.add_argument('-dtd', '--dtdpath', default='http://www.thlib.org:8080/cocoon/texts/catalogs/', help='Path to the xtib3.dtd to add to the xmlfile')
+    parser.add_argument('-i', '--indir',
+                        default='../in',
+                        help='The relative path to the in-folder containing files to be converted')
+    parser.add_argument('-o', '--out',
+                        default='../out',
+                        help='The relative path to the out-folder where converted files are written')
+    parser.add_argument('-mtf', '--metafields',
+                        action='store_true',
+                        help='List the metadata fields in the template')
+    parser.add_argument('-t', '--template',
+                        default='teiHeader.dat',
+                        help='Relative path to a metadata table XML template')
+    parser.add_argument('-dtd', '--dtdpath',
+                        default='http://www.thlib.org:8080/cocoon/texts/catalogs/',
+                        help='Path to the xtib3.dtd to add to the xmlfile')
     args = parser.parse_args()
 
     # Deal with template argument (by default the global variable metaTemplate is set to "teiHeader.dat"
@@ -1554,7 +1567,22 @@ def main():
             print(item)
         exit(0)
 
-    # Check that outpath is valid
+    # Check that in and outpaths are valid
+    print("args in is: {}".format(args.indir))
+
+    # Convert source path to list of relative file paths
+    if os.path.isdir(args.indir):
+        source_path = args.indir
+        new_list = list()
+        for sfile in os.listdir(source_path):
+            if sfile.endswith(".docx"):
+                new_list.append(os.path.join(source_path, sfile))
+        if len(new_list) > 0:
+            args.source = new_list
+        else:
+            print("Error: No valid files found in path given. All files must be of extension *.docx")
+            exit(0)
+
     print("args out is: {}".format(args.out))
 
     if not os.path.isdir(args.out):
@@ -1571,29 +1599,10 @@ def main():
             print("Current Dir is: {}".format(os.getcwd()))
             exit(0)
 
-    # if No source given
-    if not args.source or (isinstance(args.source, list) and len(args.source) == 0):
-        print("Error: You need to supply a directory or file name to convert!")
-        parser.print_help()
-        exit(0)
-
-    # Convert source path to list of relative file paths
-    if os.path.isdir(args.source[0]):
-        source_path = args.source[0]
-        new_list = list()
-        for sfile in os.listdir(source_path):
-            if sfile.endswith(".docx"):
-                new_list.append(os.path.join(source_path, sfile))
-        if len(new_list) > 0:
-            args.source = new_list
-        else:
-            print("Error: No valid files found in path given. All files must be of extension *.docx")
-            exit(0)
-
     if debugme:
-        print("{}".format(args)) # for debugging for time being
+        print("{}".format(args))  # for debugging for time being
 
-    convert_options = args # save options globally just in case needed somewhere
+    convert_options = args  # save options globally just in case needed somewhere
     mysuccess = False
 
     for cfile in args.source:
